@@ -30,7 +30,9 @@ class Car(models.Model):
 
 class DriverApplication(models.Model):
     SEX_CHOICES = {("M", "Male"), ("F", "Female")}
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE
+    )
     license_number = models.CharField(max_length=255)
     age = models.IntegerField()
     city = models.ForeignKey(City, on_delete=models.CASCADE)
