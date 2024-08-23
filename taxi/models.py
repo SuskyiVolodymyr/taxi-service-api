@@ -6,6 +6,9 @@ from taxi_service import settings
 class City(models.Model):
     name = models.CharField(max_length=255)
 
+    def __str__(self):
+        return self.name
+
 
 class Driver(models.Model):
     SEX_CHOICES = {("M", "Male"), ("F", "Female")}
@@ -20,12 +23,18 @@ class Driver(models.Model):
         max_digits=3, decimal_places=2, null=True, blank=True
     )
 
+    def __str__(self):
+        return self.user.full_name
+
 
 class Car(models.Model):
     model = models.CharField(max_length=255)
     number = models.CharField(max_length=255)
     driver = models.ForeignKey(Driver, on_delete=models.CASCADE)
     price_per_meter = models.DecimalField(max_digits=5, decimal_places=2)
+
+    def __str__(self):
+        return f"{self.driver}: {self.model}"
 
 
 class DriverApplication(models.Model):
@@ -43,3 +52,6 @@ class DriverApplication(models.Model):
     )
     created_at = models.DateTimeField(auto_now_add=True)
     reviewed_at = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return self.user.full_name
