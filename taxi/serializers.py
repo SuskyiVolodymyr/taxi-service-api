@@ -1,6 +1,7 @@
 from rest_framework import serializers
 
 from taxi.models import City, DriverApplication, Driver
+from user.serializers import UserSerializer
 
 
 class CitySerializer(serializers.ModelSerializer):
@@ -52,6 +53,42 @@ class DriverApplicationSerializer(serializers.ModelSerializer):
             user=self.context["request"].user, **validated_data
         )
         return driver_application
+
+
+class DriverApplicationListSerializer(DriverApplicationSerializer):
+    user = serializers.SlugRelatedField(
+        many=False,
+        read_only=True,
+        slug_field="full_name",
+    )
+    city = serializers.SlugRelatedField(
+        many=False,
+        read_only=True,
+        slug_field="name",
+    )
+    status = serializers.CharField(source="get_status_display")
+
+    class Meta:
+        model = DriverApplication
+        fields = (
+            "id",
+            "user",
+            "city",
+            "status",
+            "created_at",
+            "reviewed_at",
+        )
+
+
+class DriverApplicationDetailSerializer(DriverApplicationSerializer):
+    user = UserSerializer(many=False)
+    city = serializers.SlugRelatedField(
+        many=False,
+        read_only=True,
+        slug_field="name",
+    )
+    status = serializers.CharField(source="get_status_display")
+    sex = serializers.CharField(source="get_sex_display")
 
 
 class DriverSerializer(serializers.ModelSerializer):

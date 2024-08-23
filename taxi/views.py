@@ -13,6 +13,8 @@ from taxi.serializers import (
     CitySerializer,
     DriverApplicationSerializer,
     DriverSerializer,
+    DriverApplicationListSerializer,
+    DriverApplicationDetailSerializer,
 )
 
 
@@ -24,7 +26,6 @@ class CityViewSet(ModelViewSet):
 
 class DriverApplicationViewSet(ModelViewSet):
     queryset = DriverApplication.objects.all()
-    serializer_class = DriverApplicationSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
@@ -32,6 +33,13 @@ class DriverApplicationViewSet(ModelViewSet):
         if not self.request.user.is_staff:
             queryset = queryset.filter(user=self.request.user)
         return queryset
+
+    def get_serializer_class(self):
+        if self.action == "list":
+            return DriverApplicationListSerializer
+        if self.action == "retrieve":
+            return DriverApplicationDetailSerializer
+        return DriverApplicationSerializer
 
     @action(
         detail=True,
