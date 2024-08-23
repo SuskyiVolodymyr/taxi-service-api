@@ -26,3 +26,12 @@ class Car(models.Model):
     number = models.CharField(max_length=255)
     driver = models.ForeignKey(Driver, on_delete=models.CASCADE)
     price_per_meter = models.DecimalField(max_digits=5, decimal_places=2)
+
+
+class DriverApplication(models.Model):
+    SEX_CHOICES = {("M", "Male"), ("F", "Female")}
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    license_number = models.CharField(max_length=255)
+    age = models.IntegerField()
+    city = models.ForeignKey(City, on_delete=models.CASCADE)
+    sex = models.CharField(max_length=6, choices=SEX_CHOICES)
