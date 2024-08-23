@@ -9,7 +9,9 @@ class City(models.Model):
 
 class Driver(models.Model):
     SEX_CHOICES = {("M", "Male"), ("F", "Female")}
-    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE
+    )
     license_number = models.CharField(max_length=255)
     age = models.IntegerField()
     city = models.ForeignKey(City, on_delete=models.CASCADE)
