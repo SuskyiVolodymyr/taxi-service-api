@@ -1,14 +1,15 @@
 from datetime import datetime
 
 from django.db import transaction
+from django.db.models import Q
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet, GenericViewSet
 from rest_framework import mixins, status
 
-from taxi.models import City, DriverApplication, Driver, Order
-from taxi.permissions import IsAdminOrReadOnly
+from taxi.models import City, DriverApplication, Driver, Order, Ride, Car
+from taxi.permissions import IsAdminOrReadOnly, IsDriverOrAdminUser
 from taxi.serializers import (
     CitySerializer,
     DriverApplicationSerializer,
@@ -16,6 +17,9 @@ from taxi.serializers import (
     DriverApplicationListSerializer,
     DriverApplicationDetailSerializer,
     OrderSerializer,
+    TakeOrderSerializer,
+    RideListSerializer,
+    CarSerializer,
 )
 
 
@@ -23,6 +27,18 @@ class CityViewSet(ModelViewSet):
     queryset = City.objects.all()
     serializer_class = CitySerializer
     permission_classes = [IsAdminOrReadOnly]
+
+
+class CarViewSet(ModelViewSet):
+    queryset = Car.objects.all()
+    serializer_class = CarSerializer
+    permission_classes = [IsDriverOrAdminUser]
+
+    def get_queryset(self):
+        queryset = self.queryset.all()
+        if not self.request.user.is_staff:
+            queryset = queryset.filter(driver__user=self.request.user)
+        return queryset
 
 
 class DriverApplicationViewSet(ModelViewSet):
@@ -64,6 +80,7 @@ class DriverApplicationViewSet(ModelViewSet):
                 sex=application.sex,
             )
             user.is_driver = True
+            user.save()
             application.status = "A"
             application.reviewed_at = datetime.now()
             application.save()
@@ -88,12 +105,15 @@ class DriverApplicationViewSet(ModelViewSet):
             application.status = "R"
             application.reviewed_at = datetime.now()
             application.save()
-            serializer = DriverApplicationSerializer(application)
+            serializer = self.get_serializer_class()(application)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
 class DriverViewSet(
-    mixins.ListModelMixin, mixins.RetrieveModelMixin, GenericViewSet
+    mixins.ListModelMixin,
+    mixins.RetrieveModelMixin,
+    mixins.DestroyModelMixin,
+    GenericViewSet,
 ):
     queryset = Driver.objects.all()
     serializer_class = DriverSerializer
@@ -108,6 +128,7 @@ class DriverViewSet(
             driver = self.get_object()
             user = driver.user
             user.is_driver = False
+            user.save()
             driver.delete()
             return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -117,6 +138,85 @@ class OrderViewSet(
     mixins.ListModelMixin,
     mixins.RetrieveModelMixin,
     mixins.CreateModelMixin,
+    mixins.DestroyModelMixin,
 ):
     queryset = Order.objects.all()
-    serializer_class = OrderSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_serializer_class(self):
+        if self.action == "take_order":
+            return TakeOrderSerializer
+        return OrderSerializer
+
+    def get_queryset(self):
+        queryset = self.queryset.all()
+        if not self.request.user.is_staff:
+            queryset = queryset.filter(
+                Q(user=self.request.user) | Q(is_active=True)
+            )
+        return queryset
+
+    @action(
+        detail=True,
+        methods=["post"],
+        permission_classes=[IsDriverOrAdminUser],
+    )
+    def take_order(self, request, pk: int = None):
+        with transaction.atomic():
+            order = self.get_object()
+            order.is_active = False
+            order.save()
+            driver = Driver.objects.get(user=self.request.user)
+            car_id = request.data.get("car")
+            car = Car.objects.get(id=car_id)
+            ride = Ride.objects.create(order=order, driver=driver, car=car)
+            serializer = RideListSerializer(ride)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+class RideViewSet(
+    GenericViewSet,
+    mixins.ListModelMixin,
+    mixins.RetrieveModelMixin,
+    mixins.DestroyModelMixin,
+):
+    queryset = Ride.objects.all()
+    permission_classes = [IsAuthenticated]
+    serializer_class = RideListSerializer
+
+    def get_queryset(self):
+        queryset = self.queryset.all()
+        if not self.request.user.is_staff and not self.request.user.is_driver:
+            queryset = queryset.filter(order__user=self.request.user)
+        elif self.request.user.is_driver:
+            queryset = queryset.filter(
+                Q(driver__user=self.request.user)
+                | Q(order__user=self.request.user)
+            )
+        return queryset
+
+    @action(
+        detail=True,
+        methods=["get"],
+        permission_classes=[IsDriverOrAdminUser],
+    )
+    def in_process(self, request, pk: int = None):
+        with transaction.atomic():
+            ride = self.get_object()
+            ride.status = "2"
+            ride.save()
+            serializer = self.get_serializer_class()(ride)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @action(
+        detail=True,
+        methods=["get"],
+        permission_classes=[IsDriverOrAdminUser],
+    )
+    def finished(self, request, pk: int = None):
+        with transaction.atomic():
+            ride = self.get_object()
+            ride.status = "3"
+            ride.save()
+            serializer = self.get_serializer_class()(ride)
+            return Response(serializer.data, status=status.HTTP_200_OK)

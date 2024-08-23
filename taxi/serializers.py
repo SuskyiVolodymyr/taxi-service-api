@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from taxi.models import City, DriverApplication, Driver, Order
+from taxi.models import City, DriverApplication, Driver, Order, Ride, Car
 from user.serializers import UserSerializer
 
 
@@ -97,6 +97,19 @@ class DriverSerializer(serializers.ModelSerializer):
         fields = ("id", "license_number", "age", "city", "sex", "rate", "user")
 
 
+class CarSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Car
+        fields = ("id", "model", "number", "driver", "price_per_meter")
+        read_only_fields = ("id", "driver")
+
+    def create(self, validated_data):
+        car = Car.objects.create(
+            driver=self.context["request"].user, **validated_data
+        )
+        return car
+
+
 class OrderSerializer(serializers.ModelSerializer):
     class Meta:
         model = Order
@@ -108,8 +121,9 @@ class OrderSerializer(serializers.ModelSerializer):
             "street_to",
             "distance",
             "date_created",
+            "is_active",
         )
-        read_only_fields = ("id", "user", "date_created")
+        read_only_fields = ("id", "user", "date_created", "is_active")
 
     def validate(self, attrs):
         if Order.objects.filter(
@@ -122,3 +136,29 @@ class OrderSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 "Distance must be at least 1 meter"
             )
+        return attrs
+
+    def create(self, validated_data):
+        order = Order.objects.create(
+            user=self.context["request"].user, **validated_data
+        )
+        return order
+
+
+class TakeOrderSerializer(serializers.ModelSerializer):
+    car = serializers.PrimaryKeyRelatedField(queryset=Car.objects.none())
+
+    class Meta:
+        model = Ride
+        fields = ("car",)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        user = self.context["request"].user
+        self.fields["car"].queryset = Car.objects.filter(driver__user=user)
+
+
+class RideListSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Ride
+        fields = ("id", "order", "driver", "car", "status")
