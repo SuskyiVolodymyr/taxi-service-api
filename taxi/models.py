@@ -78,3 +78,20 @@ class Order(models.Model):
 
     def __str__(self):
         return f"{self.user}: {self.date_created}"
+
+
+class Ride(models.Model):
+    STATUS_CHOICES = {
+        ("1", "Waiting for client"),
+        ("2", "In process"),
+        ("3", "Finished"),
+    }
+    order = models.OneToOneField(Order, on_delete=models.CASCADE)
+    driver = models.ForeignKey(Driver, on_delete=models.CASCADE)
+    car = models.ForeignKey(Car, on_delete=models.CASCADE)
+    status = models.CharField(
+        max_length=6, choices=STATUS_CHOICES, default="1"
+    )
+
+    def __str__(self):
+        return f"{self.driver}: {self.order}"
