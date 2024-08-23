@@ -30,6 +30,7 @@ class Car(models.Model):
 
 class DriverApplication(models.Model):
     SEX_CHOICES = {("M", "Male"), ("F", "Female")}
+    STATUS_CHOICES = {("P", "Pending"), ("A", "Approved"), ("R", "Rejected")}
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE
     )
@@ -37,3 +38,6 @@ class DriverApplication(models.Model):
     age = models.IntegerField()
     city = models.ForeignKey(City, on_delete=models.CASCADE)
     sex = models.CharField(max_length=6, choices=SEX_CHOICES)
+    status = models.CharField(
+        max_length=6, choices=STATUS_CHOICES, default="P"
+    )
