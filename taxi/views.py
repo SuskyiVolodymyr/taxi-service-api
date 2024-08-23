@@ -77,6 +77,7 @@ class DriverApplicationViewSet(ModelViewSet):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
             application.status = "R"
+            application.reviewed_at = datetime.now()
             application.save()
             serializer = DriverApplicationSerializer(application)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
