@@ -1,0 +1,31 @@
+[tool.black]
+line-length = 79
+target-version = ['py312']
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | _build
+  | buck-out
+  | build
+  | dist
+)/
+'''
+
+[tool.ruff]
+line-length = 79
+exclude = ["tests", "settings.py", "migrations"]
+
+[tool.ruff.lint]
+select = [
+    "ANN",
+    "E",
+]
+
+ignore = ["ANN101", "ANN102", "ANN401", "ANN002", "ANN003"]
+
+per-file-ignores = {"__init__.py" = ["F401"]}
