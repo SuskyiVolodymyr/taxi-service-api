@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from django.db import transaction
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
@@ -54,6 +56,7 @@ class DriverApplicationViewSet(ModelViewSet):
             )
             user.is_driver = True
             application.status = "A"
+            application.reviewed_at = datetime.now()
             application.save()
             driver_serializer = DriverSerializer(driver)
             return Response(
