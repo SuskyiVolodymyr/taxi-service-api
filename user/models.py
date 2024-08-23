@@ -4,8 +4,6 @@ from django.contrib.auth.models import BaseUserManager, PermissionsMixin
 from django.db import models
 from django.utils.translation import gettext as _
 
-from taxi.models import City
-
 
 class CustomUserManager(BaseUserManager):
 
@@ -79,15 +77,3 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     def __str__(self) -> str:
         return self.email
-
-
-class Driver(models.Model):
-    SEX_CHOICES = {("M", "Male"), ("F", "Female")}
-    user = models.OneToOneField(User, on_delete=models.CASCADE)
-    license_number = models.CharField(max_length=255)
-    age = models.IntegerField()
-    city = models.ForeignKey(City, on_delete=models.CASCADE)
-    sex = models.CharField(max_length=6, choices=SEX_CHOICES)
-    rate = models.DecimalField(
-        max_digits=3, decimal_places=2, null=True, blank=True
-    )

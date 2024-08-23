@@ -1,10 +1,22 @@
 from django.db import models
 
-from user.models import Driver
+from taxi_service import settings
 
 
 class City(models.Model):
     name = models.CharField(max_length=255)
+
+
+class Driver(models.Model):
+    SEX_CHOICES = {("M", "Male"), ("F", "Female")}
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    license_number = models.CharField(max_length=255)
+    age = models.IntegerField()
+    city = models.ForeignKey(City, on_delete=models.CASCADE)
+    sex = models.CharField(max_length=6, choices=SEX_CHOICES)
+    rate = models.DecimalField(
+        max_digits=3, decimal_places=2, null=True, blank=True
+    )
 
 
 class Car(models.Model):
