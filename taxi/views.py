@@ -1,3 +1,11 @@
-from django.shortcuts import render
+from rest_framework.viewsets import ModelViewSet
 
-# Create your views here.
+from taxi.models import City
+from taxi.permissions import IsAdminOrReadOnly
+from taxi.serializers import CitySerializer
+
+
+class CityViewSet(ModelViewSet):
+    queryset = City.objects.all()
+    serializer_class = CitySerializer
+    permission_classes = [IsAdminOrReadOnly]
