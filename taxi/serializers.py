@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from taxi.models import City, DriverApplication, Driver
+from taxi.models import City, DriverApplication, Driver, Order
 from user.serializers import UserSerializer
 
 
@@ -95,3 +95,30 @@ class DriverSerializer(serializers.ModelSerializer):
     class Meta:
         model = Driver
         fields = ("id", "license_number", "age", "city", "sex", "rate", "user")
+
+
+class OrderSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Order
+        fields = (
+            "id",
+            "city",
+            "user",
+            "street_from",
+            "street_to",
+            "distance",
+            "date_created",
+        )
+        read_only_fields = ("id", "user", "date_created")
+
+    def validate(self, attrs):
+        if Order.objects.filter(
+            user=self.context["request"].user, is_active=True
+        ):
+            raise serializers.ValidationError(
+                "User already has an active order"
+            )
+        if attrs["distance"] < 1:
+            raise serializers.ValidationError(
+                "Distance must be at least 1 meter"
+            )

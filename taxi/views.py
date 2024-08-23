@@ -7,7 +7,7 @@ from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet, GenericViewSet
 from rest_framework import mixins, status
 
-from taxi.models import City, DriverApplication, Driver
+from taxi.models import City, DriverApplication, Driver, Order
 from taxi.permissions import IsAdminOrReadOnly
 from taxi.serializers import (
     CitySerializer,
@@ -15,6 +15,7 @@ from taxi.serializers import (
     DriverSerializer,
     DriverApplicationListSerializer,
     DriverApplicationDetailSerializer,
+    OrderSerializer,
 )
 
 
@@ -109,3 +110,13 @@ class DriverViewSet(
             user.is_driver = False
             driver.delete()
             return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class OrderViewSet(
+    GenericViewSet,
+    mixins.ListModelMixin,
+    mixins.RetrieveModelMixin,
+    mixins.CreateModelMixin,
+):
+    queryset = Order.objects.all()
+    serializer_class = OrderSerializer
