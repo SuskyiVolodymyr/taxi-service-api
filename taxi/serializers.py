@@ -20,8 +20,16 @@ class DriverApplicationSerializer(serializers.ModelSerializer):
             "sex",
             "user",
             "status",
+            "created_at",
+            "reviewed_at",
         )
-        read_only_fields = ("id", "user")
+        read_only_fields = (
+            "id",
+            "user",
+            "status",
+            "created_at",
+            "reviewed_at",
+        )
 
     def validate(self, attrs):
         if attrs["age"] < 18:
