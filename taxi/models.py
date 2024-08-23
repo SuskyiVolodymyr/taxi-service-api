@@ -42,4 +42,4 @@ class DriverApplication(models.Model):
         max_length=6, choices=STATUS_CHOICES, default="P"
     )
     created_at = models.DateTimeField(auto_now_add=True)
-    approved_at = models.DateTimeField(null=True, blank=True)
+    reviewed_at = models.DateTimeField(null=True, blank=True)
