@@ -1,3 +1,4 @@
+from django.db import transaction
 from django.db.models import QuerySet
 from rest_framework import mixins, serializers, status
 from rest_framework.permissions import IsAuthenticated
@@ -8,28 +9,37 @@ from rest_framework.viewsets import GenericViewSet
 
 from payment.models import Payment
 from payment.serializers import PaymentListSerializer, PaymentSerializer
+from taxi.telegram_helper import send_message
 
 
 class PaymentSuccessView(APIView):
     def get(self, request: Request, *args, **kwargs) -> Response:
-        order_id = kwargs["pk"]
-        payment = Payment.objects.get(order_id=order_id)
-        payment.status = "2"
-        payment.save()
-        return Response(
-            {"message": "Payment was successful."}, status=status.HTTP_200_OK
-        )
+        with transaction.atomic():
+            order_id = kwargs["pk"]
+            payment = Payment.objects.get(order_id=order_id)
+            payment.status = "2"
+            payment.save()
+            telegram_message = f"User {payment.order.user.full_name} successfully paid for order #{payment.order.id}."
+            send_message(telegram_message)
+            return Response(
+                {"message": "Payment was successful."},
+                status=status.HTTP_200_OK,
+            )
 
 
 class PaymentCancelView(APIView):
     def get(self, request: Request, *args, **kwargs) -> Response:
-        order_id = kwargs["pk"]
-        payment = Payment.objects.get(order_id=order_id)
-        payment.status = "3"
-        payment.save()
-        return Response(
-            {"message": "Payment was cancelled."}, status=status.HTTP_200_OK
-        )
+        with transaction.atomic():
+            order_id = kwargs["pk"]
+            payment = Payment.objects.get(order_id=order_id)
+            payment.status = "3"
+            payment.save()
+            telegram_message = f"User {payment.order.user.full_name} cancelled payment for order #{payment.order.id}."
+            send_message(telegram_message)
+            return Response(
+                {"message": "Payment was cancelled."},
+                status=status.HTTP_200_OK,
+            )
 
 
 class PaymentViewSet(

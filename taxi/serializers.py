@@ -2,6 +2,7 @@ from rest_framework import serializers
 
 from payment.models import Payment
 from taxi.models import City, DriverApplication, Driver, Order, Ride, Car
+from taxi.telegram_helper import send_message
 from user.serializers import UserSerializer
 
 
@@ -53,6 +54,8 @@ class DriverApplicationSerializer(serializers.ModelSerializer):
         driver_application = DriverApplication.objects.create(
             user=self.context["request"].user, **validated_data
         )
+        telegram_message = f"User {self.context['request'].user.full_name} applied for a driver"
+        send_message(telegram_message)
         return driver_application
 
 
@@ -166,6 +169,14 @@ class OrderSerializer(serializers.ModelSerializer):
         order = Order.objects.create(
             user=self.context["request"].user, **validated_data
         )
+        telegram_message = (
+            f"User {self.context['request'].user.full_name} created an order\n"
+            f"City: {order.city.name}\n"
+            f"From: {order.street_from}\nTo: {order.street_to}\n"
+            f"Distance: {order.distance} meters"
+            f"Order_id {order.id}"
+        )
+        send_message(telegram_message)
         return order
 
 

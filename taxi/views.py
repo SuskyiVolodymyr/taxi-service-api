@@ -215,6 +215,10 @@ class OrderViewSet(
             car = Car.objects.get(id=car_id)
             ride = Ride.objects.create(order=order, driver=driver, car=car)
             serializer = RideListSerializer(ride)
+            telegram_message = (
+                f"Driver {driver.user.full_name} has taken order #{order.id}."
+            )
+            send_message(telegram_message)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
@@ -280,4 +284,6 @@ class RideViewSet(
             ride.status = "3"
             ride.save()
             serializer = self.get_serializer_class()(ride)
+            telegram_message = f"Ride {ride} has been finished."
+            send_message(telegram_message)
             return Response(serializer.data, status=status.HTTP_200_OK)
