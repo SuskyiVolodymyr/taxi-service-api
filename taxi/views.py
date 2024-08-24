@@ -20,6 +20,11 @@ from taxi.serializers import (
     TakeOrderSerializer,
     RideListSerializer,
     CarSerializer,
+    DriverListSerializer,
+    DriverDetailSerializer,
+    OrderListSerializer,
+    OrderDetailSerializer,
+    RideDetailSerializer,
 )
 
 
@@ -116,7 +121,13 @@ class DriverViewSet(
     GenericViewSet,
 ):
     queryset = Driver.objects.all()
-    serializer_class = DriverSerializer
+
+    def get_serializer_class(self):
+        if self.action == "list":
+            return DriverListSerializer
+        if self.action == "retrieve":
+            return DriverDetailSerializer
+        return DriverSerializer
 
     @action(
         detail=True,
@@ -146,6 +157,10 @@ class OrderViewSet(
     def get_serializer_class(self):
         if self.action == "take_order":
             return TakeOrderSerializer
+        if self.action == "list":
+            return OrderListSerializer
+        if self.action == "retrieve":
+            return OrderDetailSerializer
         return OrderSerializer
 
     def get_queryset(self):
@@ -182,7 +197,6 @@ class RideViewSet(
 ):
     queryset = Ride.objects.all()
     permission_classes = [IsAuthenticated]
-    serializer_class = RideListSerializer
 
     def get_queryset(self):
         queryset = self.queryset.all()
@@ -194,6 +208,11 @@ class RideViewSet(
                 | Q(order__user=self.request.user)
             )
         return queryset
+
+    def get_serializer_class(self):
+        if self.action == "retrieve":
+            return RideDetailSerializer
+        return RideListSerializer
 
     @action(
         detail=True,

@@ -97,10 +97,28 @@ class DriverSerializer(serializers.ModelSerializer):
         fields = ("id", "license_number", "age", "city", "sex", "rate", "user")
 
 
+class DriverListSerializer(serializers.ModelSerializer):
+    user = serializers.SlugRelatedField(
+        many=False,
+        read_only=True,
+        slug_field="full_name",
+    )
+
+    class Meta:
+        model = Driver
+        fields = ("id", "user", "rate")
+
+
+class DriverDetailSerializer(DriverSerializer):
+    user = UserSerializer(many=False, read_only=True)
+    city = CitySerializer(many=False, read_only=True)
+    sex = serializers.CharField(source="get_sex_display")
+
+
 class CarSerializer(serializers.ModelSerializer):
     class Meta:
         model = Car
-        fields = ("id", "model", "number", "driver", "price_per_meter")
+        fields = ("id", "model", "number", "driver")
         read_only_fields = ("id", "driver")
 
     def create(self, validated_data):
@@ -145,6 +163,23 @@ class OrderSerializer(serializers.ModelSerializer):
         return order
 
 
+class OrderListSerializer(serializers.ModelSerializer):
+    user = serializers.SlugRelatedField(
+        many=False,
+        read_only=True,
+        slug_field="full_name",
+    )
+
+    class Meta:
+        model = Order
+        fields = ("id", "user", "distance", "date_created", "is_active")
+
+
+class OrderDetailSerializer(OrderSerializer):
+    city = CitySerializer(many=False, read_only=True)
+    user = UserSerializer(many=False, read_only=True)
+
+
 class TakeOrderSerializer(serializers.ModelSerializer):
     car = serializers.PrimaryKeyRelatedField(queryset=Car.objects.none())
 
@@ -159,6 +194,24 @@ class TakeOrderSerializer(serializers.ModelSerializer):
 
 
 class RideListSerializer(serializers.ModelSerializer):
+    driver = serializers.SlugRelatedField(
+        many=False,
+        read_only=True,
+        slug_field="user__full_name",
+    )
+    car = serializers.SlugRelatedField(
+        many=False,
+        read_only=True,
+        slug_field="number",
+    )
+    status = serializers.CharField(source="get_status_display")
+
     class Meta:
         model = Ride
         fields = ("id", "order", "driver", "car", "status")
+
+
+class RideDetailSerializer(RideListSerializer):
+    order = OrderDetailSerializer(many=False, read_only=True)
+    driver = DriverDetailSerializer(many=False, read_only=True)
+    car = CarSerializer(many=False, read_only=True)
