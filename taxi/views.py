@@ -8,6 +8,7 @@ from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet, GenericViewSet
 from rest_framework import mixins, status
 
+from payment.payment_helper import payment_helper
 from taxi.models import City, DriverApplication, Driver, Order, Ride, Car
 from taxi.permissions import IsAdminOrReadOnly, IsDriverOrAdminUser
 from taxi.serializers import (
@@ -170,6 +171,14 @@ class OrderViewSet(
                 Q(user=self.request.user) | Q(is_active=True)
             )
         return queryset
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer_class()(
+            data=request.data, context={"request": request}
+        )
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        return payment_helper(order=serializer.instance)
 
     @action(
         detail=True,

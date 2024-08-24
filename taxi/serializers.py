@@ -150,9 +150,9 @@ class OrderSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 "User already has an active order"
             )
-        if attrs["distance"] < 1:
+        if attrs["distance"] < 50:
             raise serializers.ValidationError(
-                "Distance must be at least 1 meter"
+                "Distance must be at least 50 meters"
             )
         return attrs
 
