@@ -122,9 +122,8 @@ class CarSerializer(serializers.ModelSerializer):
         read_only_fields = ("id", "driver")
 
     def create(self, validated_data):
-        car = Car.objects.create(
-            driver=self.context["request"].user, **validated_data
-        )
+        driver = Driver.objects.get(user=self.context["request"].user)
+        car = Car.objects.create(driver=driver, **validated_data)
         return car
 
 
