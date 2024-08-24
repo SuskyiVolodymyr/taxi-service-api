@@ -1,5 +1,6 @@
 from rest_framework import serializers
 
+from payment.models import Payment
 from taxi.models import City, DriverApplication, Driver, Order, Ride, Car
 from user.serializers import UserSerializer
 
@@ -148,6 +149,12 @@ class OrderSerializer(serializers.ModelSerializer):
         ):
             raise serializers.ValidationError(
                 "User already has an active order"
+            )
+        if Payment.objects.filter(
+            order__user=self.context["request"].user, status="1"
+        ):
+            raise serializers.ValidationError(
+                "You can`t create an order with pending payment"
             )
         if attrs["distance"] < 50:
             raise serializers.ValidationError(
