@@ -31,7 +31,6 @@ class Car(models.Model):
     model = models.CharField(max_length=255)
     number = models.CharField(max_length=255)
     driver = models.ForeignKey(Driver, on_delete=models.CASCADE)
-    price_per_meter = models.DecimalField(max_digits=5, decimal_places=2)
 
     def __str__(self):
         return f"{self.driver}: {self.model}"
