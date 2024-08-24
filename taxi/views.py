@@ -27,6 +27,7 @@ from taxi.serializers import (
     OrderDetailSerializer,
     RideDetailSerializer,
 )
+from taxi.telegram_helper import send_message
 
 
 class CityViewSet(ModelViewSet):
@@ -203,7 +204,6 @@ class OrderViewSet(
     @action(
         detail=True,
         methods=["post"],
-        permission_classes=[IsDriverOrAdminUser],
     )
     def take_order(self, request, pk: int = None):
         with transaction.atomic():

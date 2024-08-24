@@ -8,7 +8,6 @@ from rest_framework.viewsets import GenericViewSet
 
 from payment.models import Payment
 from payment.serializers import PaymentListSerializer, PaymentSerializer
-from taxi.models import Order
 
 
 class PaymentSuccessView(APIView):
