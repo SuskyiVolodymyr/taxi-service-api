@@ -3,7 +3,7 @@ from datetime import datetime
 from django.db import transaction
 from django.db.models import Q
 from rest_framework.decorators import action
-from rest_framework.permissions import IsAuthenticated, IsAdminUser
+from rest_framework.permissions import IsAuthenticated, IsAdminUser, AllowAny
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet, GenericViewSet
 from rest_framework import mixins, status
@@ -49,7 +49,6 @@ class CarViewSet(ModelViewSet):
 
 class DriverApplicationViewSet(ModelViewSet):
     queryset = DriverApplication.objects.select_related("user", "city")
-    permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         queryset = self.queryset.all()
@@ -64,10 +63,20 @@ class DriverApplicationViewSet(ModelViewSet):
             return DriverApplicationDetailSerializer
         return DriverApplicationSerializer
 
+    def get_permissions(self):
+        if self.action in [
+            "update",
+            "partial_update",
+            "destroy",
+            "reject",
+            "apply",
+        ]:
+            return [IsAdminUser()]
+        return [IsAuthenticated()]
+
     @action(
         detail=True,
         methods=["get"],
-        permission_classes=[IsAdminUser],
     )
     def apply(self, request, pk: int = None):
         with transaction.atomic():
@@ -98,7 +107,6 @@ class DriverApplicationViewSet(ModelViewSet):
     @action(
         detail=True,
         methods=["get"],
-        permission_classes=[IsAdminUser],
     )
     def reject(self, request, pk: int = None):
         with transaction.atomic():
@@ -130,10 +138,14 @@ class DriverViewSet(
             return DriverDetailSerializer
         return DriverSerializer
 
+    def get_permissions(self):
+        if self.action in ["update", "partial_update", "destroy", "fire"]:
+            return [IsAdminUser()]
+        return [AllowAny()]
+
     @action(
         detail=True,
         methods=["get"],
-        permission_classes=[IsAdminUser],
     )
     def fire(self, request, pk: int = None):
         with transaction.atomic():
@@ -155,7 +167,6 @@ class OrderViewSet(
     queryset = Order.objects.select_related("user", "city").prefetch_related(
         "payment"
     )
-    permission_classes = [IsAuthenticated]
 
     def get_serializer_class(self):
         if self.action == "take_order":
@@ -173,6 +184,13 @@ class OrderViewSet(
                 Q(user=self.request.user) | Q(is_active=True)
             )
         return queryset
+
+    def get_permissions(self):
+        if self.action == "destroy":
+            return [IsAdminUser()]
+        if self.action == "take_order":
+            return [IsDriverOrAdminUser()]
+        return [IsAuthenticated()]
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer_class()(
@@ -207,7 +225,6 @@ class RideViewSet(
     mixins.DestroyModelMixin,
 ):
     queryset = Ride.objects.all()
-    permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         queryset = self.queryset.select_related(
@@ -231,6 +248,13 @@ class RideViewSet(
         if self.action == "retrieve":
             return RideDetailSerializer
         return RideListSerializer
+
+    def get_permissions(self):
+        if self.action == "destroy":
+            return [IsAdminUser()]
+        if self.action in ["in_process", "finished"]:
+            return [IsDriverOrAdminUser()]
+        return [IsAuthenticated()]
 
     @action(
         detail=True,
