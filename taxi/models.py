@@ -57,11 +57,7 @@ class DriverApplication(models.Model):
 
 
 class Order(models.Model):
-    PAYMENT_STATUS_CHOICES = {
-        ("1", "Pending"),
-        ("2", "Paid"),
-        ("3", "Cancelled"),
-    }
+
     city = models.ForeignKey(City, on_delete=models.CASCADE)
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE
@@ -69,9 +65,6 @@ class Order(models.Model):
     street_from = models.CharField(max_length=255)
     street_to = models.CharField(max_length=255)
     distance = models.IntegerField()
-    payment_status = models.CharField(
-        max_length=6, choices=PAYMENT_STATUS_CHOICES, default="1"
-    )
     date_created = models.DateTimeField(auto_now_add=True)
     is_active = models.BooleanField(default=True)
 
