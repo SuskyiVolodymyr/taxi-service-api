@@ -11,6 +11,6 @@ class IsAdminOrReadOnly(BasePermission):
 
 class IsDriverOrAdminUser(BasePermission):
     def has_permission(self, request: Request, *args, **kwargs) -> bool:
-        return request.user and (
+        return request.user.is_authenticated and (
             request.user.is_driver or request.user.is_staff
         )
