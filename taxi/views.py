@@ -48,7 +48,7 @@ class CarViewSet(ModelViewSet):
 
 
 class DriverApplicationViewSet(ModelViewSet):
-    queryset = DriverApplication.objects.all()
+    queryset = DriverApplication.objects.select_related("user", "city")
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
@@ -121,7 +121,7 @@ class DriverViewSet(
     mixins.DestroyModelMixin,
     GenericViewSet,
 ):
-    queryset = Driver.objects.all()
+    queryset = Driver.objects.select_related("user", "city")
 
     def get_serializer_class(self):
         if self.action == "list":
@@ -152,7 +152,9 @@ class OrderViewSet(
     mixins.CreateModelMixin,
     mixins.DestroyModelMixin,
 ):
-    queryset = Order.objects.all()
+    queryset = Order.objects.select_related("user", "city").prefetch_related(
+        "payment"
+    )
     permission_classes = [IsAuthenticated]
 
     def get_serializer_class(self):
@@ -208,7 +210,14 @@ class RideViewSet(
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        queryset = self.queryset.all()
+        queryset = self.queryset.select_related(
+            "order__user",
+            "order__city",
+            "car",
+            "driver__user",
+            "order__payment",
+            "driver__city",
+        )
         if not self.request.user.is_staff and not self.request.user.is_driver:
             queryset = queryset.filter(order__user=self.request.user)
         elif self.request.user.is_driver:
