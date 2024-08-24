@@ -17,7 +17,9 @@ class Driver(models.Model):
     )
     license_number = models.CharField(max_length=255)
     age = models.IntegerField()
-    city = models.ForeignKey(City, on_delete=models.CASCADE, related_name="drivers")
+    city = models.ForeignKey(
+        City, on_delete=models.CASCADE, related_name="drivers"
+    )
     sex = models.CharField(max_length=6, choices=SEX_CHOICES)
     rate = models.DecimalField(
         max_digits=3, decimal_places=2, null=True, blank=True
@@ -30,7 +32,9 @@ class Driver(models.Model):
 class Car(models.Model):
     model = models.CharField(max_length=255)
     number = models.CharField(max_length=255)
-    driver = models.ForeignKey(Driver, on_delete=models.CASCADE, related_name="cars")
+    driver = models.ForeignKey(
+        Driver, on_delete=models.CASCADE, related_name="cars"
+    )
 
     def __str__(self):
         return f"{self.driver}: {self.model}"
@@ -44,7 +48,9 @@ class DriverApplication(models.Model):
     )
     license_number = models.CharField(max_length=255)
     age = models.IntegerField()
-    city = models.ForeignKey(City, on_delete=models.CASCADE, related_name="applications")
+    city = models.ForeignKey(
+        City, on_delete=models.CASCADE, related_name="applications"
+    )
     sex = models.CharField(max_length=6, choices=SEX_CHOICES)
     status = models.CharField(
         max_length=6, choices=STATUS_CHOICES, default="P"
@@ -58,7 +64,9 @@ class DriverApplication(models.Model):
 
 class Order(models.Model):
 
-    city = models.ForeignKey(City, on_delete=models.CASCADE, related_name="orders")
+    city = models.ForeignKey(
+        City, on_delete=models.CASCADE, related_name="orders"
+    )
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE
     )
@@ -80,7 +88,9 @@ class Ride(models.Model):
     }
     order = models.OneToOneField(Order, on_delete=models.CASCADE)
     driver = models.ForeignKey(Driver, on_delete=models.CASCADE)
-    car = models.ForeignKey(Car, on_delete=models.CASCADE, related_name="rides")
+    car = models.ForeignKey(
+        Car, on_delete=models.CASCADE, related_name="rides"
+    )
     status = models.CharField(
         max_length=6, choices=STATUS_CHOICES, default="1"
     )

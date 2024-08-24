@@ -169,15 +169,38 @@ class OrderListSerializer(serializers.ModelSerializer):
         read_only=True,
         slug_field="full_name",
     )
+    payment_status = serializers.CharField(source="payment.get_status_display")
 
     class Meta:
         model = Order
-        fields = ("id", "user", "distance", "date_created", "is_active")
+        fields = (
+            "id",
+            "user",
+            "distance",
+            "date_created",
+            "is_active",
+            "payment_status",
+        )
 
 
-class OrderDetailSerializer(OrderSerializer):
+class OrderDetailSerializer(serializers.ModelSerializer):
     city = CitySerializer(many=False, read_only=True)
     user = UserSerializer(many=False, read_only=True)
+    payment_status = serializers.CharField(source="payment.get_status_display")
+
+    class Meta:
+        model = Order
+        fields = (
+            "id",
+            "city",
+            "user",
+            "street_from",
+            "street_to",
+            "distance",
+            "date_created",
+            "is_active",
+            "payment_status",
+        )
 
 
 class TakeOrderSerializer(serializers.ModelSerializer):
