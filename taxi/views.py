@@ -211,6 +211,13 @@ class OrderViewSet(
             order.is_active = False
             order.save()
             driver = Driver.objects.get(user=self.request.user)
+            if Ride.objects.filter(
+                driver=driver, status__in=["1", "2"]
+            ).exists():
+                return Response(
+                    "You already have an active ride",
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
             car_id = request.data.get("car")
             car = Car.objects.get(id=car_id)
             ride = Ride.objects.create(order=order, driver=driver, car=car)

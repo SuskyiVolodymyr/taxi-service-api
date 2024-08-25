@@ -13,6 +13,8 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 import os
 from datetime import timedelta
 from pathlib import Path
+
+from celery.schedules import crontab
 from dotenv import load_dotenv
 
 
@@ -49,6 +51,7 @@ INSTALLED_APPS = [
     "rest_framework",
     "debug_toolbar",
     "django_filters",
+    "django_celery_beat",
     "payment",
     "taxi",
     "user",
@@ -91,8 +94,12 @@ WSGI_APPLICATION = "taxi_service.wsgi.application"
 
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": os.environ["POSTGRES_DB"],
+        "USER": os.environ["POSTGRES_USER"],
+        "PASSWORD": os.environ["POSTGRES_PASSWORD"],
+        "HOST": os.environ["POSTGRES_HOST"],
+        "PORT": os.environ["POSTGRES_PORT"],
     }
 }
 
@@ -121,7 +128,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = "en-us"
 
-TIME_ZONE = "UTC"
+TIME_ZONE = "Europe/Kiev"
 
 USE_I18N = True
 
@@ -179,3 +186,17 @@ SPECTACULAR_SETTINGS = {
 STRIPE_SECRET_KEY = os.getenv("STRIPE_API_KEY")
 
 SITE_DOMAIN = "http://127.0.0.1:8000"
+
+CELERY_BROKER_URL = os.environ["CELERY_BROKER_URL"]
+CELERY_RESULT_BACKEND = os.environ["CELERY_RESULT_BACKEND"]
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
+CELERY_TIMEZONE = "Europe/Kiev"
+
+CELERY_BEAT_SCHEDULE = {
+    "Task_one_schedule": {
+        "task": "payment.tasks.check_daily_profit",
+        "schedule": crontab(minute=59, hour=23),
+    }
+}
