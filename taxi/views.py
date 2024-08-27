@@ -8,9 +8,9 @@ from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet, GenericViewSet
 from rest_framework import mixins, status
 
-from payment.payment_helper import payment_helper
+from payment.services.payment_helper import payment_helper
 from taxi.models import City, DriverApplication, Driver, Order, Ride, Car
-from taxi.permissions import IsAdminOrReadOnly, IsDriverOrAdminUser
+from taxi.services.permissions import IsAdminOrReadOnly, IsDriverOrAdminUser
 from taxi.serializers import (
     CitySerializer,
     DriverApplicationSerializer,
@@ -27,7 +27,7 @@ from taxi.serializers import (
     OrderDetailSerializer,
     RideDetailSerializer,
 )
-from taxi.telegram_helper import send_message
+from taxi.services.telegram_helper import send_message
 
 
 class CityViewSet(ModelViewSet):
@@ -181,9 +181,13 @@ class OrderViewSet(
     def get_queryset(self):
         queryset = self.queryset.all()
         if not self.request.user.is_staff:
-            queryset = queryset.filter(
-                Q(user=self.request.user) | Q(is_active=True)
-            )
+            if not self.request.user.is_driver:
+                queryset = queryset.filter(user=self.request.user)
+            else:
+                queryset = queryset.filter(
+                    Q(payment__status="2")
+                    & (Q(user=self.request.user) | Q(is_active=True))
+                )
         return queryset
 
     def get_permissions(self):

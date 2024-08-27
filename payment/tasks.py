@@ -2,8 +2,7 @@ from celery import shared_task
 from datetime import date
 
 from payment.models import Payment
-from taxi.models import Order
-from taxi.telegram_helper import send_message
+from taxi.services.telegram_helper import send_message
 
 
 @shared_task

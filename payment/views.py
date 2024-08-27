@@ -9,7 +9,7 @@ from rest_framework.viewsets import GenericViewSet
 
 from payment.models import Payment
 from payment.serializers import PaymentListSerializer, PaymentSerializer
-from taxi.telegram_helper import send_message
+from taxi.services.telegram_helper import send_message
 
 
 class PaymentSuccessView(APIView):

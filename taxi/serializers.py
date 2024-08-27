@@ -2,7 +2,7 @@ from rest_framework import serializers
 
 from payment.models import Payment
 from taxi.models import City, DriverApplication, Driver, Order, Ride, Car
-from taxi.telegram_helper import send_message
+from taxi.services.telegram_helper import send_message
 from user.serializers import UserSerializer
 
 
