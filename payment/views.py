@@ -32,11 +32,19 @@ class PaymentCancelView(APIView):
     def get(self, request: Request, *args, **kwargs) -> Response:
         with transaction.atomic():
             session_id = request.query_params.get("session_id")
+
             payment = Payment.objects.get(session_id=session_id)
             payment.status = "3"
+            payment.session_url = None
             payment.save()
+
+            order = payment.order
+            order.is_active = False
+            order.save()
+
             telegram_message = f"User {payment.order.user.full_name} cancelled payment for order #{payment.order.id}."
             send_message(telegram_message)
+
             return Response(
                 {"message": "Payment was cancelled."},
                 status=status.HTTP_200_OK,

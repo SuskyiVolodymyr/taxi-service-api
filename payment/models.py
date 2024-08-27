@@ -11,7 +11,7 @@ class Payment(models.Model):
         canceled = "3", "Canceled"
 
     status = EnumField(StatusEnum)
-    session_url = models.URLField(max_length=500)
+    session_url = models.URLField(max_length=500, null=True, blank=True)
     session_id = models.CharField(max_length=100)
     money_to_pay = models.DecimalField(decimal_places=2, max_digits=10)
     order = models.OneToOneField(
