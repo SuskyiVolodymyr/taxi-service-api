@@ -9,6 +9,7 @@ from rest_framework.viewsets import GenericViewSet
 
 from payment.models import Payment
 from payment.serializers import PaymentListSerializer, PaymentSerializer
+from payment.services.filters import PaymentFilters
 from taxi.services.telegram_helper import send_message
 
 
@@ -48,6 +49,7 @@ class PaymentViewSet(
 
     queryset = Payment.objects.all()
     permission_classes = [IsAuthenticated]
+    filterset_class = PaymentFilters
 
     def get_serializer_class(self) -> serializers.SerializerMetaclass:
         if self.action == "list":

@@ -1,11 +1,11 @@
 from rest_framework import serializers
 
 from payment.models import Payment
-from taxi.serializers import OrderSerializer
+from taxi.serializers import OrderListSerializer, OrderDetailSerializer
 
 
 class PaymentSerializer(serializers.ModelSerializer):
-    order = OrderSerializer(read_only=True)
+    order = OrderDetailSerializer(read_only=True)
     status = serializers.CharField(source="get_status_display", read_only=True)
 
     class Meta:
@@ -21,6 +21,7 @@ class PaymentSerializer(serializers.ModelSerializer):
 
 
 class PaymentListSerializer(PaymentSerializer):
+    order = OrderListSerializer(read_only=True)
 
     class Meta:
         model = Payment
