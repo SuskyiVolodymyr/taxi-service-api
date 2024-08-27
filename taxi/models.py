@@ -24,6 +24,7 @@ class Driver(models.Model):
     rate = models.DecimalField(
         max_digits=3, decimal_places=2, null=True, blank=True
     )
+    rate_count = models.IntegerField(null=True, blank=True)
 
     def __str__(self):
         return self.user.full_name
