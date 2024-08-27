@@ -16,8 +16,8 @@ from taxi.services.telegram_helper import send_message
 class PaymentSuccessView(APIView):
     def get(self, request: Request, *args, **kwargs) -> Response:
         with transaction.atomic():
-            order_id = kwargs["pk"]
-            payment = Payment.objects.get(order_id=order_id)
+            session_id = request.query_params.get("session_id")
+            payment = Payment.objects.get(session_id=session_id)
             payment.status = "2"
             payment.save()
             telegram_message = f"User {payment.order.user.full_name} successfully paid for order #{payment.order.id}."
@@ -31,8 +31,8 @@ class PaymentSuccessView(APIView):
 class PaymentCancelView(APIView):
     def get(self, request: Request, *args, **kwargs) -> Response:
         with transaction.atomic():
-            order_id = kwargs["pk"]
-            payment = Payment.objects.get(order_id=order_id)
+            session_id = request.query_params.get("session_id")
+            payment = Payment.objects.get(session_id=session_id)
             payment.status = "3"
             payment.save()
             telegram_message = f"User {payment.order.user.full_name} cancelled payment for order #{payment.order.id}."
@@ -44,7 +44,10 @@ class PaymentCancelView(APIView):
 
 
 class PaymentViewSet(
-    GenericViewSet, mixins.ListModelMixin, mixins.RetrieveModelMixin
+    GenericViewSet,
+    mixins.ListModelMixin,
+    mixins.RetrieveModelMixin,
+    mixins.DestroyModelMixin,
 ):
 
     queryset = Payment.objects.all()

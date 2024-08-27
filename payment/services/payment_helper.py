@@ -1,7 +1,6 @@
 import stripe
 from django.conf import settings
 from django.db import transaction
-from django.urls import reverse
 from rest_framework import status
 from rest_framework.response import Response
 
@@ -16,8 +15,6 @@ PRICE_PER_METER = 1
 
 def payment_helper(order: Order) -> Response:
     money_to_pay = order.distance * PRICE_PER_METER
-    success_url = f"{settings.SITE_DOMAIN}{reverse('payment:payment-success', args=[order.id])}"
-    cancel_url = f"{settings.SITE_DOMAIN}{reverse('payment:payment-cancel', args=[order.id])}"
     with transaction.atomic():
         try:
             checkout_session = stripe.checkout.Session.create(
@@ -33,9 +30,12 @@ def payment_helper(order: Order) -> Response:
                     },
                 ],
                 mode="payment",
-                success_url=success_url,
-                cancel_url=cancel_url,
+                success_url=settings.SITE_DOMAIN
+                + "api/v1/payment/success?session_id={CHECKOUT_SESSION_ID}",
+                cancel_url=settings.SITE_DOMAIN
+                + "api/v1/payment/cancel?session_id={CHECKOUT_SESSION_ID}",
             )
+
             payment = Payment.objects.create(
                 status="1",
                 order=order,
@@ -43,7 +43,9 @@ def payment_helper(order: Order) -> Response:
                 session_id=checkout_session.id,
                 money_to_pay=round(money_to_pay / 100, 2),
             )
+
             serializer = PaymentSerializer(payment)
+
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         except Exception as e:
             return Response({"error": str(e)}, status=400)
