@@ -10,6 +10,14 @@ from rest_framework import mixins, status
 
 from payment.services.payment_helper import payment_helper
 from taxi.models import City, DriverApplication, Driver, Order, Ride, Car
+from taxi.services.filters import (
+    CarFilters,
+    CityFilters,
+    DriverApplicationFilters,
+    DriverFilters,
+    OrderFilters,
+    RideFilters,
+)
 from taxi.services.permissions import IsAdminOrReadOnly, IsDriverOrAdminUser
 from taxi.serializers import (
     CitySerializer,
@@ -34,12 +42,14 @@ class CityViewSet(ModelViewSet):
     queryset = City.objects.all()
     serializer_class = CitySerializer
     permission_classes = [IsAdminOrReadOnly]
+    filterset_class = CityFilters
 
 
 class CarViewSet(ModelViewSet):
     queryset = Car.objects.all()
     serializer_class = CarSerializer
     permission_classes = [IsDriverOrAdminUser]
+    filterset_class = CarFilters
 
     def get_queryset(self):
         queryset = self.queryset.all()
@@ -50,6 +60,7 @@ class CarViewSet(ModelViewSet):
 
 class DriverApplicationViewSet(ModelViewSet):
     queryset = DriverApplication.objects.select_related("user", "city")
+    filterset_class = DriverApplicationFilters
 
     def get_queryset(self):
         queryset = self.queryset.all()
@@ -131,6 +142,7 @@ class DriverViewSet(
     GenericViewSet,
 ):
     queryset = Driver.objects.select_related("user", "city")
+    filterset_class = DriverFilters
 
     def get_serializer_class(self):
         if self.action == "list":
@@ -168,6 +180,7 @@ class OrderViewSet(
     queryset = Order.objects.select_related("user", "city").prefetch_related(
         "payment"
     )
+    filterset_class = OrderFilters
 
     def get_serializer_class(self):
         if self.action == "take_order":
@@ -240,6 +253,7 @@ class RideViewSet(
     mixins.DestroyModelMixin,
 ):
     queryset = Ride.objects.all()
+    filterset_class = RideFilters
 
     def get_queryset(self):
         queryset = self.queryset.select_related(

@@ -120,6 +120,12 @@ class DriverDetailSerializer(DriverSerializer):
 
 
 class CarSerializer(serializers.ModelSerializer):
+    driver = serializers.SlugRelatedField(
+        many=False,
+        read_only=True,
+        slug_field="user.full_name",
+    )
+
     class Meta:
         model = Car
         fields = ("id", "model", "number", "driver")
