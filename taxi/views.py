@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import Q, Avg
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated, IsAdminUser, AllowAny
 from rest_framework.response import Response
@@ -34,6 +34,7 @@ from taxi.serializers import (
     OrderListSerializer,
     OrderDetailSerializer,
     RideDetailSerializer,
+    RideRateSerializer,
 )
 from taxi.services.telegram_helper import send_message
 
@@ -91,6 +92,9 @@ class DriverApplicationViewSet(ModelViewSet):
         methods=["get"],
     )
     def apply(self, request, pk: int = None):
+        """
+        Apply driver application. Only admin have permissions to do that.
+        """
         with transaction.atomic():
             application = self.get_object()
             if application.status != "P":
@@ -121,6 +125,9 @@ class DriverApplicationViewSet(ModelViewSet):
         methods=["get"],
     )
     def reject(self, request, pk: int = None):
+        """
+        Reject driver application. Only admin have permissions to do that.
+        """
         with transaction.atomic():
             application = self.get_object()
             if application.status != "P":
@@ -133,6 +140,14 @@ class DriverApplicationViewSet(ModelViewSet):
             application.save()
             serializer = self.get_serializer_class()(application)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    def create(self, request, *args, **kwargs):
+        """
+        User can apply for a driver. Only admin can see all applications.
+        User can't apply if it's already applied for a driver.
+        User can't apply if he is already a driver.
+        """
+        return super().create(request, *args, **kwargs)
 
 
 class DriverViewSet(
@@ -161,6 +176,9 @@ class DriverViewSet(
         methods=["get"],
     )
     def fire(self, request, pk: int = None):
+        """
+        Fire driver. Only admin have permissions to do that.
+        """
         with transaction.atomic():
             driver = self.get_object()
             user = driver.user
@@ -211,6 +229,11 @@ class OrderViewSet(
         return [IsAuthenticated()]
 
     def create(self, request, *args, **kwargs):
+        """
+        User can't create an order if he already has an active order.
+        User can't create and order if he has pending payment.
+        Distance must be greater than 50.
+        """
         serializer = self.get_serializer_class()(
             data=request.data, context={"request": request}
         )
@@ -223,6 +246,12 @@ class OrderViewSet(
         methods=["post"],
     )
     def take_order(self, request, pk: int = None):
+        """
+        Take an active order. Only driver have permissions to do that.
+        Driver can take only one order at a time.
+        Driver can't take an order if he has an active ride.
+        Driver must choose a car for the order.
+        """
         with transaction.atomic():
             order = self.get_object()
             order.is_active = False
@@ -276,6 +305,8 @@ class RideViewSet(
     def get_serializer_class(self):
         if self.action == "retrieve":
             return RideDetailSerializer
+        if self.action == "rate_ride":
+            return RideRateSerializer
         return RideListSerializer
 
     def get_permissions(self):
@@ -291,6 +322,9 @@ class RideViewSet(
         permission_classes=[IsDriverOrAdminUser],
     )
     def in_process(self, request, pk: int = None):
+        """
+        Update ride status to in process.
+        """
         with transaction.atomic():
             ride = self.get_object()
             ride.status = "2"
@@ -304,6 +338,9 @@ class RideViewSet(
         permission_classes=[IsDriverOrAdminUser],
     )
     def finished(self, request, pk: int = None):
+        """
+        Update ride status to finished.
+        """
         with transaction.atomic():
             ride = self.get_object()
             ride.status = "3"
@@ -311,4 +348,39 @@ class RideViewSet(
             serializer = self.get_serializer_class()(ride)
             telegram_message = f"Ride {ride} has been finished."
             send_message(telegram_message)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @action(
+        detail=True,
+        methods=["post"],
+        permission_classes=[IsAuthenticated],
+    )
+    def rate_ride(self, request, pk: int = None):
+        """
+        Only user who ordered can rate the ride.
+        Rate must be between 1 and 5.
+        User can't rate one ride more than once.
+        """
+        with transaction.atomic():
+            ride = self.get_object()
+            if ride.rate:
+                return Response(
+                    "You already rated this ride",
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            if request.user != ride.order.user:
+                return Response(
+                    "You can't rate this ride",
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            rate_serializer = self.get_serializer_class()(data=request.data)
+            rate_serializer.is_valid(raise_exception=True)
+            ride.rate = rate_serializer.validated_data["rate"]
+            ride.save()
+            driver = ride.driver
+            driver.rate = Ride.objects.filter(driver=driver).aggregate(
+                Avg("rate")
+            )["rate__avg"]
+            driver.save()
+            serializer = RideDetailSerializer(ride)
             return Response(serializer.data, status=status.HTTP_200_OK)

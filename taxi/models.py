@@ -6,6 +6,10 @@ from taxi_service import settings
 class City(models.Model):
     name = models.CharField(max_length=255)
 
+    class Meta:
+        verbose_name_plural = "cities"
+        ordering = ["name"]
+
     def __str__(self):
         return self.name
 
@@ -25,6 +29,9 @@ class Driver(models.Model):
         max_digits=3, decimal_places=2, null=True, blank=True
     )
 
+    class Meta:
+        ordering = ["user__first_name"]
+
     def __str__(self):
         return self.user.full_name
 
@@ -35,6 +42,9 @@ class Car(models.Model):
     driver = models.ForeignKey(
         Driver, on_delete=models.CASCADE, related_name="cars"
     )
+
+    class Meta:
+        ordering = ["model"]
 
     def __str__(self):
         return f"{self.driver}: {self.model}"
@@ -58,6 +68,9 @@ class DriverApplication(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     reviewed_at = models.DateTimeField(null=True, blank=True)
 
+    class Meta:
+        ordering = ["status", "created_at"]
+
     def __str__(self):
         return self.user.full_name
 
@@ -75,6 +88,9 @@ class Order(models.Model):
     distance = models.IntegerField()
     date_created = models.DateTimeField(auto_now_add=True)
     is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["-date_created"]
 
     def __str__(self):
         return f"{self.user}: {self.date_created}"
@@ -95,6 +111,9 @@ class Ride(models.Model):
         max_length=6, choices=STATUS_CHOICES, default="1"
     )
     rate = models.IntegerField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["status"]
 
     def __str__(self):
         return f"{self.driver}: {self.order}"

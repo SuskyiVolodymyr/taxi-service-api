@@ -254,10 +254,14 @@ class RideListSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Ride
-        fields = ("id", "order", "driver", "car", "status")
+        fields = ("id", "order", "driver", "car", "status", "rate")
 
 
 class RideDetailSerializer(RideListSerializer):
     order = OrderDetailSerializer(many=False, read_only=True)
     driver = DriverDetailSerializer(many=False, read_only=True)
     car = CarSerializer(many=False, read_only=True)
+
+
+class RideRateSerializer(serializers.Serializer):
+    rate = serializers.ChoiceField(choices=range(1, 6))

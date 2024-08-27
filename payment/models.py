@@ -17,3 +17,6 @@ class Payment(models.Model):
     order = models.OneToOneField(
         Order, on_delete=models.CASCADE, related_name="payment"
     )
+
+    class Meta:
+        ordering = ["status"]

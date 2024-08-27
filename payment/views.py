@@ -14,6 +14,11 @@ from taxi.services.telegram_helper import send_message
 
 
 class PaymentSuccessView(APIView):
+    """
+    Automatically redirects when payment is successful,
+    updates payment status and sends a message to the telegram.
+    """
+
     def get(self, request: Request, *args, **kwargs) -> Response:
         with transaction.atomic():
             session_id = request.query_params.get("session_id")
@@ -29,6 +34,12 @@ class PaymentSuccessView(APIView):
 
 
 class PaymentCancelView(APIView):
+    """
+    Automatically redirects when payment is cancelled,
+    updates payment status, removes session url
+    and sends a message to the telegram.
+    """
+
     def get(self, request: Request, *args, **kwargs) -> Response:
         with transaction.atomic():
             session_id = request.query_params.get("session_id")
