@@ -17,3 +17,4 @@ humanize==4.10.0
 django-filter==24.3
 ruff==0.6.1
 black==24.8.0
+coverage==7.6.1
