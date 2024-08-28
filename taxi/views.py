@@ -153,7 +153,6 @@ class DriverApplicationViewSet(ModelViewSet):
 class DriverViewSet(
     mixins.ListModelMixin,
     mixins.RetrieveModelMixin,
-    mixins.DestroyModelMixin,
     GenericViewSet,
 ):
     queryset = Driver.objects.select_related("user", "city")
