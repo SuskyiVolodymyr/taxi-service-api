@@ -139,7 +139,7 @@ class DriverApplicationViewSet(ModelViewSet):
             application.reviewed_at = datetime.now()
             application.save()
             serializer = self.get_serializer_class()(application)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+            return Response(serializer.data, status=status.HTTP_200_OK)
 
     def create(self, request, *args, **kwargs):
         """
