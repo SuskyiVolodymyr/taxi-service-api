@@ -66,7 +66,6 @@ class PaymentViewSet(
     GenericViewSet,
     mixins.ListModelMixin,
     mixins.RetrieveModelMixin,
-    mixins.DestroyModelMixin,
 ):
 
     queryset = Payment.objects.all()
