@@ -143,7 +143,9 @@ class UnauthorizedRideAPITest(TestBase):
         self.assertEqual(res.status_code, status.HTTP_401_UNAUTHORIZED)
 
     @patch("taxi.views.send_message")
-    def test_unauthorized_cant_change_rides_status_to_finished(self, mock_send_message):
+    def test_unauthorized_cant_change_rides_status_to_finished(
+        self, mock_send_message
+    ):
         order = self.sample_order()
         driver = self.sample_driver()
         car = self.sample_car(driver)
@@ -267,7 +269,9 @@ class SimpleUserRideAPITest(TestBase):
         self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
 
     @patch("taxi.views.send_message")
-    def test_simple_user_cant_change_rides_status_to_in_process(self, mock_send_message):
+    def test_simple_user_cant_change_rides_status_to_in_process(
+        self, mock_send_message
+    ):
         order = self.sample_order(self.user)
         driver = self.sample_driver()
         car = self.sample_car(driver)
