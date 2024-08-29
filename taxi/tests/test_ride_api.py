@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 from django.conf.global_settings import AUTH_USER_MODEL
 from django.contrib.auth import get_user_model
 from django.urls import reverse
@@ -140,7 +142,8 @@ class UnauthorizedRideAPITest(TestBase):
 
         self.assertEqual(res.status_code, status.HTTP_401_UNAUTHORIZED)
 
-    def test_unauthorized_cant_change_rides_status_to_finished(self):
+    @patch("taxi.views.send_message")
+    def test_unauthorized_cant_change_rides_status_to_finished(self, mock_send_message):
         order = self.sample_order()
         driver = self.sample_driver()
         car = self.sample_car(driver)
@@ -154,6 +157,7 @@ class UnauthorizedRideAPITest(TestBase):
         res = self.client.get(reverse("taxi:ride-finished", args=[ride.id]))
 
         self.assertEqual(res.status_code, status.HTTP_401_UNAUTHORIZED)
+        mock_send_message.assert_not_called()
 
 
 class SimpleUserRideAPITest(TestBase):
@@ -262,7 +266,8 @@ class SimpleUserRideAPITest(TestBase):
 
         self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
 
-    def test_simple_user_cant_change_rides_status_to_in_process(self):
+    @patch("taxi.views.send_message")
+    def test_simple_user_cant_change_rides_status_to_in_process(self, mock_send_message):
         order = self.sample_order(self.user)
         driver = self.sample_driver()
         car = self.sample_car(driver)
@@ -276,6 +281,7 @@ class SimpleUserRideAPITest(TestBase):
         res = self.client.get(reverse("taxi:ride-finished", args=[ride.id]))
 
         self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
+        mock_send_message.assert_not_called()
 
 
 class DriverRideAPITest(TestBase):
@@ -392,7 +398,10 @@ class DriverRideAPITest(TestBase):
 
         self.assertEqual(res.status_code, status.HTTP_200_OK)
 
-    def test_driver_can_change_ride_status_to_finished(self):
+    @patch("taxi.views.send_message")
+    def test_driver_can_change_ride_status_to_finished(
+        self, mock_send_message
+    ):
         order = self.sample_order(self.user2)
         driver = self.sample_driver(self.user)
         car = self.sample_car(driver)
@@ -406,6 +415,8 @@ class DriverRideAPITest(TestBase):
         res = self.client.get(reverse("taxi:ride-finished", args=[ride.id]))
 
         self.assertEqual(res.status_code, status.HTTP_200_OK)
+
+        mock_send_message.assert_called_once()
 
 
 class AdminRideAPITest(TestBase):
