@@ -221,3 +221,99 @@ class SimpleUserPaymentAPITest(TestCase):
         self.assertFalse(order.is_active)
 
         mock_send_message.assert_called_once()
+
+
+class AdminPaymentAPITest(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.admin = get_user_model().objects.create_user(
+            email="admin@admin.com",
+            first_name="test",
+            last_name="test",
+            password="test1234",
+            is_staff=True,
+        )
+        self.client.force_authenticate(self.admin)
+
+        self.user = get_user_model().objects.create_user(
+            email="test@test.com",
+            first_name="test",
+            last_name="test",
+            password="test1234",
+        )
+
+    def sample_order(self, user: AUTH_USER_MODEL = None) -> Order:
+        if user is None:
+            user = self.user
+        return Order.objects.create(
+            user=user,
+            city=City.objects.create(name="test city"),
+            street_from="test street_from",
+            street_to="test street_to",
+            distance=51,
+        )
+
+    @staticmethod
+    def sample_payment(order: Order) -> Payment:
+        return Payment.objects.create(
+            status="1",
+            session_url="https://google.com",
+            session_id="test",
+            money_to_pay=10.00,
+            order=order,
+        )
+
+    def test_admin_can_list_all_payments(self):
+        order = self.sample_order()
+        payment = self.sample_payment(order)
+
+        serializer = PaymentListSerializer(payment)
+
+        res = self.client.get(PAYMENT_URL)
+
+        self.assertIn(serializer.data, res.data)
+
+    def test_filter_by_status(self):
+        order1 = self.sample_order()
+        user2 = get_user_model().objects.create_user(
+            email="test2@test.com",
+            first_name="test2",
+            last_name="test2",
+            password="test1234",
+        )
+        order2 = self.sample_order(user2)
+
+        payment1 = self.sample_payment(order1)
+        payment2 = self.sample_payment(order2)
+
+        payment2.status = "3"
+        payment2.save()
+
+        serializer1 = PaymentListSerializer(payment1)
+        serializer2 = PaymentListSerializer(payment2)
+
+        res = self.client.get(PAYMENT_URL, {"status": "3"})
+
+        self.assertIn(serializer2.data, res.data)
+        self.assertNotIn(serializer1.data, res.data)
+
+    def test_filter_by_user(self):
+        order1 = self.sample_order()
+        user2 = get_user_model().objects.create_user(
+            email="test2@test.com",
+            first_name="test2",
+            last_name="test2",
+            password="test1234",
+        )
+        order2 = self.sample_order(user2)
+
+        payment1 = self.sample_payment(order1)
+        payment2 = self.sample_payment(order2)
+
+        serializer1 = PaymentListSerializer(payment1)
+        serializer2 = PaymentListSerializer(payment2)
+
+        res = self.client.get(PAYMENT_URL, {"user": user2.id})
+
+        self.assertIn(serializer2.data, res.data)
+        self.assertNotIn(serializer1.data, res.data)

@@ -4,6 +4,7 @@ from django.urls import reverse
 from rest_framework import status
 
 from taxi.models import Driver, City
+from taxi.serializers import DriverListSerializer
 from taxi.tests.base import TestBase
 
 DRIVER_URL = reverse("taxi:driver-list")
@@ -109,9 +110,11 @@ class TestFirePermissions(TestBase):
         super().setUp()
         self.city = City.objects.create(name="test city")
 
-    def sample_driver(self) -> Driver:
+    def sample_driver(self, user: AUTH_USER_MODEL = None) -> Driver:
+        if not user:
+            user = self.user
         return Driver.objects.create(
-            user=self.user,
+            user=user,
             license_number="123456",
             age=18,
             city=self.city,
@@ -184,3 +187,59 @@ class TestFirePermissions(TestBase):
 
         self.assertEqual(res.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(Driver.objects.filter(id=driver.id).exists())
+
+    def test_filter_by_first_name(self):
+        driver1 = self.sample_driver()
+        user2 = get_user_model().objects.create_user(
+            email="test2@test.com",
+            first_name="test2",
+            last_name="test2",
+            password="test1234",
+        )
+        driver2 = self.sample_driver(user2)
+
+        serializer1 = DriverListSerializer(driver1)
+        serializer2 = DriverListSerializer(driver2)
+
+        res = self.client.get(DRIVER_URL, {"first_name": "test2"})
+
+        self.assertIn(serializer2.data, res.data)
+        self.assertNotIn(serializer1.data, res.data)
+
+    def test_filter_by_last_name(self):
+        driver1 = self.sample_driver()
+        user2 = get_user_model().objects.create_user(
+            email="test2@test.com",
+            first_name="test2",
+            last_name="test2",
+            password="test1234",
+        )
+        driver2 = self.sample_driver(user2)
+
+        serializer1 = DriverListSerializer(driver1)
+        serializer2 = DriverListSerializer(driver2)
+
+        res = self.client.get(DRIVER_URL, {"last_name": "test2"})
+
+        self.assertIn(serializer2.data, res.data)
+        self.assertNotIn(serializer1.data, res.data)
+
+    def test_filter_by_city(self):
+        driver1 = self.sample_driver()
+        user2 = get_user_model().objects.create_user(
+            email="test2@test.com",
+            first_name="test2",
+            last_name="test2",
+            password="test1234",
+        )
+        driver2 = self.sample_driver(user2)
+        driver2.city = City.objects.create(name="test city 2")
+        driver2.save()
+
+        serializer1 = DriverListSerializer(driver1)
+        serializer2 = DriverListSerializer(driver2)
+
+        res = self.client.get(DRIVER_URL, {"city": "2"})
+
+        self.assertIn(serializer2.data, res.data)
+        self.assertNotIn(serializer1.data, res.data)

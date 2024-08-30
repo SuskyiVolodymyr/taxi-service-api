@@ -248,14 +248,81 @@ class AdminOrderAPITest(TestBase):
         self.client.force_authenticate(user=self.admin)
         self.city = City.objects.create(name="test city")
 
-    def sample_order(self):
+    def sample_order(self, user: AUTH_USER_MODEL = None) -> Order:
+        if user is None:
+            user = self.user
         return Order.objects.create(
-            user=self.user,
+            user=user,
             city=self.city,
             street_from="test street_from",
             street_to="test street_to",
             distance=51,
         )
+
+    def test_admin_can_list_all_orders(self):
+        order = self.sample_order()
+
+        res = self.client.get(ORDER_URL)
+
+        serializer = OrderListSerializer(order)
+
+        self.assertIn(serializer.data, res.data)
+
+    def test_filter_by_payment_status(self):
+        order1 = self.sample_order()
+        Payment.objects.create(
+            status="2",
+            order=order1,
+            session_id="123",
+            money_to_pay=50,
+        )
+        order2 = self.sample_order()
+        Payment.objects.create(
+            status="1",
+            order=order2,
+            session_id="123",
+            money_to_pay=50,
+        )
+
+        serializer1 = OrderListSerializer(order1)
+        serializer2 = OrderListSerializer(order2)
+
+        res = self.client.get(ORDER_URL, {"payment_status": "2"})
+
+        self.assertIn(serializer1.data, res.data)
+        self.assertNotIn(serializer2.data, res.data)
+
+    def test_filter_by_user(self):
+        order1 = self.sample_order()
+        user2 = get_user_model().objects.create_user(
+            email="test2@test.com",
+            first_name="test",
+            last_name="test",
+            password="test1234",
+        )
+        order2 = self.sample_order(user=user2)
+
+        serializer1 = OrderListSerializer(order1)
+        serializer2 = OrderListSerializer(order2)
+
+        res = self.client.get(ORDER_URL, {"user": user2.id})
+
+        self.assertNotIn(serializer1.data, res.data)
+        self.assertIn(serializer2.data, res.data)
+
+    def test_filter_by_is_active(self):
+        order1 = self.sample_order()
+        order2 = self.sample_order()
+        order2.is_active = False
+        order2.save()
+
+        serializer1 = OrderListSerializer(order1)
+        serializer2 = OrderListSerializer(order2)
+
+        res = self.client.get(ORDER_URL, {"is_active": "true"})
+
+        self.assertIn(serializer1.data, res.data)
+        self.assertNotIn(serializer2.data, res.data)
 
     def test_update_orders_method_not_allowed(self):
         order = self.sample_order()

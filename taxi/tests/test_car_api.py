@@ -225,9 +225,11 @@ class AdminCarAPITest(TestBase):
             driver=driver,
         )
 
-    def sample_driver(self):
+    def sample_driver(self, user: AUTH_USER_MODEL = None) -> Driver:
+        if user is None:
+            user = self.user
         return Driver.objects.create(
-            user=self.user,
+            user=user,
             license_number="123456",
             age=18,
             city=City.objects.create(name="test city"),
@@ -248,6 +250,26 @@ class AdminCarAPITest(TestBase):
         res = self.client.get(CAR_URL)
 
         self.assertIn(serializer.data, res.data)
+
+    def test_car_list_with_driver_filter(self):
+        self.user2 = get_user_model().objects.create_user(
+            email="test2@test.com",
+            first_name="test2",
+            last_name="test2",
+            password="test1234",
+        )
+        driver = self.sample_driver()
+        driver2 = self.sample_driver(user=self.user2)
+        car1 = self.sample_car(driver)
+        car2 = self.sample_car(driver2)
+
+        serializer1 = CarSerializer(car1)
+        serializer2 = CarSerializer(car2)
+
+        res = self.client.get(CAR_URL, {"driver": driver.id})
+
+        self.assertIn(serializer1.data, res.data)
+        self.assertNotIn(serializer2.data, res.data)
 
     def test_admin_can_update_cars(self):
         driver = self.sample_driver()

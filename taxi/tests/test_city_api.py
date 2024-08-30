@@ -2,6 +2,7 @@ from django.urls import reverse
 from rest_framework import status
 
 from taxi.models import City
+from taxi.serializers import CitySerializer
 from taxi.tests.base import TestBase
 
 CITY_URL = reverse("taxi:city-list")
@@ -88,3 +89,15 @@ class AdminCityAPITest(TestBase):
 
         self.assertEqual(res.status_code, status.HTTP_204_NO_CONTENT)
         self.assertEqual(list(City.objects.filter(id=city.id)), [])
+
+    def test_city_filters(self):
+        city1 = City.objects.create(name="test city1")
+        city2 = City.objects.create(name="test city2")
+
+        serializer1 = CitySerializer(city1)
+        serializer2 = CitySerializer(city2)
+
+        res = self.client.get(CITY_URL, {"name": "city1"})
+
+        self.assertIn(serializer1.data, res.data)
+        self.assertNotIn(serializer2.data, res.data)

@@ -427,34 +427,197 @@ class AdminRideAPITest(TestBase):
     def setUp(self):
         super().setUp()
         self.client.force_authenticate(user=self.admin)
+        self.city = City.objects.create(name="test city")
 
-    def test_admin_can_delete_rides(self):
-        order = Order.objects.create(
-            user=self.user,
-            city=City.objects.create(name="test city"),
+    def sample_order(self, user: AUTH_USER_MODEL):
+        return Order.objects.create(
+            user=user,
+            city=self.city,
             street_from="test street_from",
             street_to="test street_to",
             distance=51,
         )
 
-        driver = Driver.objects.create(
-            user=get_user_model().objects.create_user(
-                email="test2@test.com",
-                first_name="test",
-                last_name="test",
-                password="test1234",
-                is_driver=True,
-            ),
+    def sample_driver(self, user: AUTH_USER_MODEL):
+        return Driver.objects.create(
+            user=user,
             license_number="123456",
             age=18,
-            city=City.objects.create(name="test city"),
+            city=self.city,
             sex="M",
         )
-        car = Car.objects.create(
+
+    def sample_car(self, driver):
+        return Car.objects.create(
             model="test model",
             number="test number",
             driver=driver,
         )
+
+    def test_admin_can_list_all_rides(self):
+        order = self.sample_order(self.user)
+        user2 = get_user_model().objects.create_user(
+            email="test2@test.com",
+            first_name="test",
+            last_name="test",
+            password="test1234",
+            is_driver=True,
+        )
+        driver = self.sample_driver(user2)
+        car = self.sample_car(driver)
+
+        ride = Ride.objects.create(
+            order=order,
+            driver=driver,
+            car=car,
+        )
+
+        serializer = RideListSerializer(ride)
+
+        res = self.client.get(RIDE_URL)
+
+        self.assertIn(serializer.data, res.data)
+
+    def test_filter_by_driver(self):
+        order1 = self.sample_order(self.user)
+        order2 = self.sample_order(self.user)
+
+        driver_user1 = get_user_model().objects.create_user(
+            email="driver1@test.com",
+            first_name="test",
+            last_name="test",
+            password="test1234",
+            is_driver=True,
+        )
+
+        driver_user2 = get_user_model().objects.create_user(
+            email="driver2@test.com",
+            first_name="test",
+            last_name="test",
+            password="test1234",
+            is_driver=True,
+        )
+
+        driver1 = self.sample_driver(driver_user1)
+        driver2 = self.sample_driver(driver_user2)
+
+        car1 = self.sample_car(driver1)
+        car2 = self.sample_car(driver2)
+
+        ride1 = Ride.objects.create(
+            order=order1,
+            driver=driver1,
+            car=car1,
+        )
+
+        ride2 = Ride.objects.create(
+            order=order2,
+            driver=driver2,
+            car=car2,
+        )
+
+        serializer1 = RideListSerializer(ride1)
+        serializer2 = RideListSerializer(ride2)
+
+        res = self.client.get(RIDE_URL, {"driver": driver1.id})
+
+        self.assertIn(serializer1.data, res.data)
+        self.assertNotIn(serializer2.data, res.data)
+
+    def test_filter_by_user(self):
+        order1 = self.sample_order(self.user)
+        user2 = get_user_model().objects.create_user(
+            email="test2@test.com",
+            first_name="test",
+            last_name="test",
+            password="test1234",
+            is_driver=True,
+        )
+        order2 = self.sample_order(user2)
+
+        driver_user = get_user_model().objects.create_user(
+            email="driver1@test.com",
+            first_name="test",
+            last_name="test",
+            password="test1234",
+            is_driver=True,
+        )
+
+        driver = self.sample_driver(driver_user)
+
+        car = self.sample_car(driver)
+
+        ride1 = Ride.objects.create(
+            order=order1,
+            driver=driver,
+            car=car,
+        )
+
+        ride2 = Ride.objects.create(
+            order=order2,
+            driver=driver,
+            car=car,
+        )
+
+        serializer1 = RideListSerializer(ride1)
+        serializer2 = RideListSerializer(ride2)
+
+        res = self.client.get(RIDE_URL, {"user": self.user.id})
+
+        self.assertIn(serializer1.data, res.data)
+        self.assertNotIn(serializer2.data, res.data)
+
+    def test_filter_by_status(self):
+        order = self.sample_order(self.user)
+        order2 = self.sample_order(self.user)
+
+        driver_user = get_user_model().objects.create_user(
+            email="driver1@test.com",
+            first_name="test",
+            last_name="test",
+            password="test1234",
+            is_driver=True,
+        )
+
+        driver = self.sample_driver(driver_user)
+
+        car = self.sample_car(driver)
+
+        ride1 = Ride.objects.create(
+            order=order,
+            driver=driver,
+            car=car,
+        )
+
+        ride2 = Ride.objects.create(
+            order=order2,
+            driver=driver,
+            car=car,
+        )
+
+        ride2.status = "3"
+        ride2.save()
+
+        serializer1 = RideListSerializer(ride1)
+        serializer2 = RideListSerializer(ride2)
+
+        res = self.client.get(RIDE_URL, {"status": "3"})
+
+        self.assertIn(serializer2.data, res.data)
+        self.assertNotIn(serializer1.data, res.data)
+
+    def test_admin_can_delete_rides(self):
+        order = self.sample_order(self.user)
+        user2 = get_user_model().objects.create_user(
+            email="test2@test.com",
+            first_name="test",
+            last_name="test",
+            password="test1234",
+            is_driver=True,
+        )
+        driver = self.sample_driver(user2)
+
+        car = self.sample_car(driver)
 
         ride = Ride.objects.create(
             order=order,

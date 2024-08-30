@@ -259,6 +259,20 @@ class AdminDriverApplicationAPITest(TestBase):
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         self.assertIn(serializer1.data, res.data)
 
+    def test_filter_by_status(self):
+        driver_application1 = self.sample_driver_application()
+        driver_application2 = self.sample_driver_application()
+        driver_application2.status = "R"
+        driver_application2.save()
+
+        serializer1 = DriverApplicationListSerializer(driver_application1)
+        serializer2 = DriverApplicationListSerializer(driver_application2)
+
+        res = self.client.get(DRIVER_APPLICATION_URL, {"status": "P"})
+
+        self.assertIn(serializer1.data, res.data)
+        self.assertNotIn(serializer2.data, res.data)
+
     def test_admin_can_update_driver_applications(self):
         driver_application = self.sample_driver_application()
 
