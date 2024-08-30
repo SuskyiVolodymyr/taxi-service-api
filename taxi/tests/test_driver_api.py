@@ -17,17 +17,7 @@ def get_driver_detail(driver_id) -> str:
 class TestAllowedMethods(TestBase):
     def setUp(self):
         super().setUp()
-        self.client.force_authenticate(self.admin)
-        self.city = City.objects.create(name="test city")
-
-    def sample_driver(self) -> Driver:
-        return Driver.objects.create(
-            user=self.user,
-            license_number="123456",
-            age=18,
-            city=self.city,
-            sex="M",
-        )
+        self.client.force_authenticate(self.default_admin)
 
     def test_list_method_allowed(self):
         res = self.client.get(DRIVER_URL)
@@ -35,62 +25,27 @@ class TestAllowedMethods(TestBase):
         self.assertEqual(res.status_code, status.HTTP_200_OK)
 
     def test_retrieve_method_allowed(self):
-        driver = self.sample_driver()
-
-        res = self.client.get(get_driver_detail(driver.id))
+        res = self.client.get(get_driver_detail(self.default_driver.id))
 
         self.assertEqual(res.status_code, status.HTTP_200_OK)
 
     def test_create_method_not_allowed(self):
-        payload = {
-            "license_number": "123456",
-            "age": 18,
-            "city": self.city.id,
-            "sex": "M",
-        }
-
-        res = self.client.post(DRIVER_URL, payload)
+        res = self.client.post(DRIVER_URL)
 
         self.assertEqual(res.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
 
     def test_update_method_not_allowed(self):
-        driver = self.sample_driver()
-
-        payload = {
-            "license_number": "654321",
-            "age": 19,
-            "city": self.city.id,
-            "sex": "F",
-        }
-
-        res = self.client.patch(
-            get_driver_detail(driver.id),
-            payload,
-        )
+        res = self.client.patch(get_driver_detail(self.default_driver.id))
 
         self.assertEqual(res.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
 
     def test_delete_method_not_allowed(self):
-        driver = self.sample_driver()
-
-        res = self.client.delete(get_driver_detail(driver.id))
+        res = self.client.delete(get_driver_detail(self.default_driver.id))
 
         self.assertEqual(res.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
 
 
 class UnauthorizedUserTest(TestBase):
-    def setUp(self):
-        super().setUp()
-        self.city = City.objects.create(name="test city")
-
-    def sample_driver(self) -> Driver:
-        return Driver.objects.create(
-            user=self.user,
-            license_number="123456",
-            age=18,
-            city=self.city,
-            sex="M",
-        )
 
     def test_unauthorized_user_can_list_driver(self):
         res = self.client.get(DRIVER_URL)
@@ -98,9 +53,7 @@ class UnauthorizedUserTest(TestBase):
         self.assertEqual(res.status_code, status.HTTP_200_OK)
 
     def test_unauthorized_user_can_retrieve_driver(self):
-        driver = self.sample_driver()
-
-        res = self.client.get(get_driver_detail(driver.id))
+        res = self.client.get(get_driver_detail(self.default_driver.id))
 
         self.assertEqual(res.status_code, status.HTTP_200_OK)
 
@@ -108,135 +61,106 @@ class UnauthorizedUserTest(TestBase):
 class TestFirePermissions(TestBase):
     def setUp(self):
         super().setUp()
-        self.city = City.objects.create(name="test city")
-
-    def sample_driver(self, user: AUTH_USER_MODEL = None) -> Driver:
-        if not user:
-            user = self.user
-        return Driver.objects.create(
-            user=user,
-            license_number="123456",
-            age=18,
-            city=self.city,
-            sex="M",
-        )
 
     def test_unauthorized_user_cant_fire_driver(self):
-        driver = self.sample_driver()
-
         res = self.client.get(
             reverse(
                 "taxi:driver-fire",
-                args=[driver.id],
+                args=[self.default_driver.id],
             )
         )
 
         self.assertEqual(res.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_simple_user_cant_fire_driver(self):
-        driver = self.sample_driver()
-        user2 = get_user_model().objects.create_user(
-            email="test2@test.com",
-            first_name="test2",
-            last_name="test2",
-            password="test1234",
-        )
-        self.client.force_authenticate(user=user2)
+        self.client.force_authenticate(user=self.default_user)
 
         res = self.client.get(
             reverse(
                 "taxi:driver-fire",
-                args=[driver.id],
+                args=[self.default_driver.id],
             )
         )
 
         self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_driver_cant_fire_driver(self):
-        driver = self.sample_driver()
-        driver2 = get_user_model().objects.create_user(
+        driver_user_2 = self.sample_user(
             email="test2@test.com",
-            first_name="test2",
-            last_name="test2",
-            password="test1234",
             is_driver=True,
         )
+        driver_2 = self.sample_driver(driver_user_2)
 
-        self.client.force_authenticate(user=driver2)
+        self.client.force_authenticate(user=self.default_driver_user)
 
         res = self.client.get(
             reverse(
                 "taxi:driver-fire",
-                args=[driver.id],
+                args=[driver_2.id],
             )
         )
 
         self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_admin_can_fire_driver(self):
-        driver = self.sample_driver()
-
-        self.client.force_authenticate(user=self.admin)
+        self.client.force_authenticate(user=self.default_admin)
 
         res = self.client.get(
             reverse(
                 "taxi:driver-fire",
-                args=[driver.id],
+                args=[self.default_driver.id],
             )
         )
 
         self.assertEqual(res.status_code, status.HTTP_204_NO_CONTENT)
-        self.assertFalse(Driver.objects.filter(id=driver.id).exists())
+        self.assertFalse(
+            Driver.objects.filter(id=self.default_driver.id).exists()
+        )
+
+
+class TestFiltering(TestBase):
 
     def test_filter_by_first_name(self):
-        driver1 = self.sample_driver()
-        user2 = get_user_model().objects.create_user(
+        user2 = self.sample_user(
             email="test2@test.com",
-            first_name="test2",
-            last_name="test2",
-            password="test1234",
+            first_name="Robert",
+            is_driver=True,
         )
         driver2 = self.sample_driver(user2)
 
-        serializer1 = DriverListSerializer(driver1)
+        serializer1 = DriverListSerializer(self.default_driver)
         serializer2 = DriverListSerializer(driver2)
 
-        res = self.client.get(DRIVER_URL, {"first_name": "test2"})
+        res = self.client.get(DRIVER_URL, {"first_name": "ro"})
 
         self.assertIn(serializer2.data, res.data)
         self.assertNotIn(serializer1.data, res.data)
 
     def test_filter_by_last_name(self):
-        driver1 = self.sample_driver()
-        user2 = get_user_model().objects.create_user(
+        user2 = self.sample_user(
             email="test2@test.com",
-            first_name="test2",
-            last_name="test2",
-            password="test1234",
+            last_name="Smith",
+            is_driver=True,
         )
         driver2 = self.sample_driver(user2)
 
-        serializer1 = DriverListSerializer(driver1)
+        serializer1 = DriverListSerializer(self.default_driver)
         serializer2 = DriverListSerializer(driver2)
 
-        res = self.client.get(DRIVER_URL, {"last_name": "test2"})
+        res = self.client.get(DRIVER_URL, {"last_name": "sm"})
 
         self.assertIn(serializer2.data, res.data)
         self.assertNotIn(serializer1.data, res.data)
 
     def test_filter_by_city(self):
-        driver1 = self.sample_driver()
-        user2 = get_user_model().objects.create_user(
+        user2 = self.sample_user(
             email="test2@test.com",
-            first_name="test2",
-            last_name="test2",
-            password="test1234",
+            is_driver=True,
         )
-        driver2 = self.sample_driver(user2)
-        driver2.city = City.objects.create(name="test city 2")
-        driver2.save()
+        new_city = City.objects.create(name="test city 2")
+        driver2 = self.sample_driver(user2, city=new_city)
 
-        serializer1 = DriverListSerializer(driver1)
+        serializer1 = DriverListSerializer(self.default_driver)
         serializer2 = DriverListSerializer(driver2)
 
         res = self.client.get(DRIVER_URL, {"city": "2"})
