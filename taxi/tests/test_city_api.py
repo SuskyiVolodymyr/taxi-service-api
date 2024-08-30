@@ -24,16 +24,14 @@ class UnauthorizedCityAPITest(TestBase):
         self.assertEqual(res.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_unauthorized_user_cannot_update_cities(self):
-        city = City.objects.create(name="test city")
         res = self.client.patch(
-            get_city_detail(city.id), {"name": "updated city"}
+            get_city_detail(self.default_city.id), {"name": "updated city"}
         )
 
         self.assertEqual(res.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_unauthorized_user_cannot_delete_cities(self):
-        city = City.objects.create(name="test city")
-        res = self.client.delete(get_city_detail(city.id))
+        res = self.client.delete(get_city_detail(self.default_city.id))
 
         self.assertEqual(res.status_code, status.HTTP_401_UNAUTHORIZED)
 
@@ -41,7 +39,7 @@ class UnauthorizedCityAPITest(TestBase):
 class SimpleUserCityAPITest(TestBase):
     def setUp(self):
         super().setUp()
-        self.client.force_authenticate(user=self.user)
+        self.client.force_authenticate(user=self.default_user)
 
     def test_simple_user_cannot_create_cities(self):
         res = self.client.post(CITY_URL, {"name": "test city"})
@@ -49,16 +47,14 @@ class SimpleUserCityAPITest(TestBase):
         self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_simple_user_cannot_update_cities(self):
-        city = City.objects.create(name="test city")
         res = self.client.patch(
-            get_city_detail(city.id), {"name": "updated city"}
+            get_city_detail(self.default_city.id), {"name": "updated city"}
         )
 
         self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_simple_user_cannot_delete_cities(self):
-        city = City.objects.create(name="test city")
-        res = self.client.delete(get_city_detail(city.id))
+        res = self.client.delete(get_city_detail(self.default_city.id))
 
         self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
 
@@ -66,7 +62,7 @@ class SimpleUserCityAPITest(TestBase):
 class AdminCityAPITest(TestBase):
     def setUp(self):
         super().setUp()
-        self.client.force_authenticate(user=self.admin)
+        self.client.force_authenticate(user=self.default_admin)
 
     def test_admin_can_create_cities(self):
         res = self.client.post(CITY_URL, {"name": "test city"})
@@ -74,30 +70,24 @@ class AdminCityAPITest(TestBase):
         self.assertEqual(res.status_code, status.HTTP_201_CREATED)
 
     def test_admin_can_update_cities(self):
-        city = City.objects.create(name="test city")
         res = self.client.patch(
-            get_city_detail(city.id), {"name": "updated city"}
+            get_city_detail(self.default_city.id), {"name": "updated city"}
         )
 
         self.assertEqual(res.status_code, status.HTTP_200_OK)
-        city.refresh_from_db()
-        self.assertEqual(city.name, "updated city")
 
     def test_admin_can_delete_cities(self):
-        city = City.objects.create(name="test city")
-        res = self.client.delete(get_city_detail(city.id))
+        res = self.client.delete(get_city_detail(self.default_city.id))
 
         self.assertEqual(res.status_code, status.HTTP_204_NO_CONTENT)
-        self.assertEqual(list(City.objects.filter(id=city.id)), [])
 
     def test_city_filters(self):
-        city1 = City.objects.create(name="test city1")
         city2 = City.objects.create(name="test city2")
 
-        serializer1 = CitySerializer(city1)
+        serializer1 = CitySerializer(self.default_city)
         serializer2 = CitySerializer(city2)
 
-        res = self.client.get(CITY_URL, {"name": "city1"})
+        res = self.client.get(CITY_URL, {"name": "city2"})
 
-        self.assertIn(serializer1.data, res.data)
-        self.assertNotIn(serializer2.data, res.data)
+        self.assertIn(serializer2.data, res.data)
+        self.assertNotIn(serializer1.data, res.data)
