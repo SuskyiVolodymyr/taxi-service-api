@@ -20,57 +20,34 @@ def get_ride_detail(ride_id) -> str:
 class TestAllowedMethods(TestBase):
     def setUp(self):
         super().setUp()
-        self.client.force_authenticate(self.admin)
-        self.city = City.objects.create(name="test city")
-
-    def sample_order(self):
-        return Order.objects.create(
-            user=self.user,
-            city=City.objects.create(name="test city"),
-            street_from="test street_from",
-            street_to="test street_to",
-            distance=51,
-        )
-
-    def sample_driver(self):
-        return Driver.objects.create(
-            user=self.user,
-            license_number="123456",
-            age=18,
-            city=self.city,
-            sex="M",
-        )
-
-    def sample_car(self, driver):
-        return Car.objects.create(
-            model="test model",
-            number="test number",
-            driver=driver,
-        )
+        self.client.force_authenticate(self.default_admin)
 
     def test_create_method_not_allowed(self):
-        order = self.sample_order()
-        driver = self.sample_driver()
-        car = self.sample_car(driver)
+        order = self.sample_order(self.default_user)
 
-        payload = {"order": order.id, "driver": driver.id, "car": car.id}
+        payload = {
+            "order": order.id,
+            "driver": self.default_driver.id,
+            "car": self.default_car.id,
+        }
 
         res = self.client.post(RIDE_URL, payload)
 
         self.assertEqual(res.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
 
     def test_update_method_not_allowed(self):
-        order = self.sample_order()
-        driver = self.sample_driver()
-        car = self.sample_car(driver)
-
+        order = self.sample_order(self.default_user)
         ride = Ride.objects.create(
             order=order,
-            driver=driver,
-            car=car,
+            driver=self.default_driver,
+            car=self.default_car,
         )
 
-        payload = {"order": order.id, "driver": driver.id, "car": car.id}
+        payload = {
+            "order": order.id,
+            "driver": self.default_driver.id,
+            "car": self.default_car.id,
+        }
 
         res = self.client.patch(get_ride_detail(ride.id), payload)
 
@@ -78,49 +55,17 @@ class TestAllowedMethods(TestBase):
 
 
 class UnauthorizedRideAPITest(TestBase):
-    def setUp(self):
-        super().setUp()
-        self.city = City.objects.create(name="test city")
-
-    def sample_order(self):
-        return Order.objects.create(
-            user=self.user,
-            city=City.objects.create(name="test city"),
-            street_from="test street_from",
-            street_to="test street_to",
-            distance=51,
-        )
-
-    def sample_driver(self):
-        return Driver.objects.create(
-            user=self.user,
-            license_number="123456",
-            age=18,
-            city=self.city,
-            sex="M",
-        )
-
-    def sample_car(self, driver):
-        return Car.objects.create(
-            model="test model",
-            number="test number",
-            driver=driver,
-        )
-
     def test_unauthorized_cant_list_rides(self):
         res = self.client.get(RIDE_URL)
 
         self.assertEqual(res.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_unauthorized_cant_delete_rides(self):
-        order = self.sample_order()
-        driver = self.sample_driver()
-        car = self.sample_car(driver)
-
+        order = self.sample_order(self.default_user)
         ride = Ride.objects.create(
             order=order,
-            driver=driver,
-            car=car,
+            driver=self.default_driver,
+            car=self.default_car,
         )
 
         res = self.client.delete(get_ride_detail(ride.id))
@@ -128,14 +73,11 @@ class UnauthorizedRideAPITest(TestBase):
         self.assertEqual(res.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_unauthorized_cant_change_rides_status_to_in_process(self):
-        order = self.sample_order()
-        driver = self.sample_driver()
-        car = self.sample_car(driver)
-
+        order = self.sample_order(self.default_user)
         ride = Ride.objects.create(
             order=order,
-            driver=driver,
-            car=car,
+            driver=self.default_driver,
+            car=self.default_car,
         )
 
         res = self.client.get(reverse("taxi:ride-in-process", args=[ride.id]))
@@ -146,14 +88,11 @@ class UnauthorizedRideAPITest(TestBase):
     def test_unauthorized_cant_change_rides_status_to_finished(
         self, mock_send_message
     ):
-        order = self.sample_order()
-        driver = self.sample_driver()
-        car = self.sample_car(driver)
-
+        order = self.sample_order(self.default_user)
         ride = Ride.objects.create(
             order=order,
-            driver=driver,
-            car=car,
+            driver=self.default_driver,
+            car=self.default_car,
         )
 
         res = self.client.get(reverse("taxi:ride-finished", args=[ride.id]))
@@ -165,47 +104,7 @@ class UnauthorizedRideAPITest(TestBase):
 class SimpleUserRideAPITest(TestBase):
     def setUp(self):
         super().setUp()
-        self.client.force_authenticate(self.user)
-        self.city = City.objects.create(name="test city")
-        self.driver_user = get_user_model().objects.create_user(
-            email="test2@test.com",
-            first_name="test2",
-            last_name="test2",
-            password="test1234",
-        )
-        self.driver_user.is_driver = True
-        self.driver_user.save()
-        self.user2 = get_user_model().objects.create_user(
-            email="test3@test.com",
-            first_name="test3",
-            last_name="test3",
-            password="test1234",
-        )
-
-    def sample_order(self, user: AUTH_USER_MODEL):
-        return Order.objects.create(
-            user=user,
-            city=City.objects.create(name="test city"),
-            street_from="test street_from",
-            street_to="test street_to",
-            distance=51,
-        )
-
-    def sample_driver(self):
-        return Driver.objects.create(
-            user=self.driver_user,
-            license_number="123456",
-            age=18,
-            city=self.city,
-            sex="M",
-        )
-
-    def sample_car(self, driver):
-        return Car.objects.create(
-            model="test model",
-            number="test number",
-            driver=driver,
-        )
+        self.client.force_authenticate(self.default_user)
 
     def test_simple_user_can_list_rides(self):
         res = self.client.get(RIDE_URL)
@@ -213,21 +112,19 @@ class SimpleUserRideAPITest(TestBase):
         self.assertEqual(res.status_code, status.HTTP_200_OK)
 
     def test_simple_user_can_list_only_his_rides(self):
-        order1 = self.sample_order(self.user)
-        order2 = self.sample_order(self.user2)
-        driver = self.sample_driver()
-        car = self.sample_car(driver)
-
+        order1 = self.sample_order(self.default_user)
+        another_user = self.sample_user("another_user@example.com")
+        order2 = self.sample_order(another_user)
         ride1 = Ride.objects.create(
             order=order1,
-            driver=driver,
-            car=car,
+            driver=self.default_driver,
+            car=self.default_car,
         )
 
         ride2 = Ride.objects.create(
             order=order2,
-            driver=driver,
-            car=car,
+            driver=self.default_driver,
+            car=self.default_car,
         )
 
         serializer1 = RideListSerializer(ride1)
@@ -239,14 +136,11 @@ class SimpleUserRideAPITest(TestBase):
         self.assertNotIn(serializer2.data, res.data)
 
     def test_simple_user_cant_delete_rides(self):
-        order = self.sample_order(self.user)
-        driver = self.sample_driver()
-        car = self.sample_car(driver)
-
+        order = self.sample_order(self.default_driver_user)
         ride = Ride.objects.create(
             order=order,
-            driver=driver,
-            car=car,
+            driver=self.default_driver,
+            car=self.default_car,
         )
 
         res = self.client.delete(get_ride_detail(ride.id))
@@ -254,14 +148,11 @@ class SimpleUserRideAPITest(TestBase):
         self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_simple_user_cant_change_rides_status_to_in_process(self):
-        order = self.sample_order(self.user)
-        driver = self.sample_driver()
-        car = self.sample_car(driver)
-
+        order = self.sample_order(self.default_user)
         ride = Ride.objects.create(
             order=order,
-            driver=driver,
-            car=car,
+            driver=self.default_driver,
+            car=self.default_car,
         )
 
         res = self.client.get(reverse("taxi:ride-in-process", args=[ride.id]))
@@ -269,17 +160,14 @@ class SimpleUserRideAPITest(TestBase):
         self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
 
     @patch("taxi.views.send_message")
-    def test_simple_user_cant_change_rides_status_to_in_process(
+    def test_simple_user_cant_change_rides_status_to_finished(
         self, mock_send_message
     ):
-        order = self.sample_order(self.user)
-        driver = self.sample_driver()
-        car = self.sample_car(driver)
-
+        order = self.sample_order(self.default_user)
         ride = Ride.objects.create(
             order=order,
-            driver=driver,
-            car=car,
+            driver=self.default_driver,
+            car=self.default_car,
         )
 
         res = self.client.get(reverse("taxi:ride-finished", args=[ride.id]))
@@ -291,63 +179,23 @@ class SimpleUserRideAPITest(TestBase):
 class DriverRideAPITest(TestBase):
     def setUp(self):
         super().setUp()
-        self.client.force_authenticate(self.user)
-        self.user.is_driver = True
-        self.user.save()
-        self.user2 = get_user_model().objects.create_user(
-            email="test2@test.com",
-            first_name="test",
-            last_name="test",
-            password="test1234",
-        )
-        self.driver2 = get_user_model().objects.create_user(
-            email="test3@test.com",
-            first_name="test3",
-            last_name="test3",
-            password="test1234",
-            is_driver=True,
-        )
-        self.city = City.objects.create(name="test city")
-
-    def sample_order(self, user: AUTH_USER_MODEL):
-        return Order.objects.create(
-            user=user,
-            city=self.city,
-            street_from="test street_from",
-            street_to="test street_to",
-            distance=51,
-        )
-
-    def sample_driver(self, user: AUTH_USER_MODEL):
-        return Driver.objects.create(
-            user=user,
-            license_number="123456",
-            age=18,
-            city=self.city,
-            sex="M",
-        )
-
-    def sample_car(self, driver):
-        return Car.objects.create(
-            model="test model",
-            number="test number",
-            driver=driver,
-        )
+        self.client.force_authenticate(self.default_driver_user)
 
     def test_driver_can_list_only_his_orders_or_orders_he_took(self):
-        order1 = self.sample_order(self.user2)
-        order2 = self.sample_order(self.user2)
-        order3 = self.sample_order(self.user)
-        driver1 = self.sample_driver(self.user)
-        driver2 = self.sample_driver(self.driver2)
-
-        car1 = self.sample_car(driver1)
+        order1 = self.sample_order(self.default_user)
+        order2 = self.sample_order(self.default_user)
+        order3 = self.sample_order(self.default_driver_user)
+        driver_user2 = self.sample_user(
+            "another_driver_user@example.com",
+            is_driver=True,
+        )
+        driver2 = self.sample_driver(driver_user2)
         car2 = self.sample_car(driver2)
 
         ride1 = Ride.objects.create(
             order=order1,
-            driver=driver1,
-            car=car1,
+            driver=self.default_driver,
+            car=self.default_car,
         )
 
         ride2 = Ride.objects.create(
@@ -373,14 +221,11 @@ class DriverRideAPITest(TestBase):
         self.assertIn(serializer3.data, res.data)
 
     def test_driver_cant_delete_rides(self):
-        order = self.sample_order(self.user2)
-        driver = self.sample_driver(self.user)
-        car = self.sample_car(driver)
-
+        order = self.sample_order(self.default_user)
         ride = Ride.objects.create(
             order=order,
-            driver=driver,
-            car=car,
+            driver=self.default_driver,
+            car=self.default_car,
         )
 
         res = self.client.delete(get_ride_detail(ride.id))
@@ -388,14 +233,11 @@ class DriverRideAPITest(TestBase):
         self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_driver_can_change_ride_status_to_in_process(self):
-        order = self.sample_order(self.user2)
-        driver = self.sample_driver(self.user)
-        car = self.sample_car(driver)
-
+        order = self.sample_order(self.default_user)
         ride = Ride.objects.create(
             order=order,
-            driver=driver,
-            car=car,
+            driver=self.default_driver,
+            car=self.default_car,
         )
 
         res = self.client.get(reverse("taxi:ride-in-process", args=[ride.id]))
@@ -406,14 +248,11 @@ class DriverRideAPITest(TestBase):
     def test_driver_can_change_ride_status_to_finished(
         self, mock_send_message
     ):
-        order = self.sample_order(self.user2)
-        driver = self.sample_driver(self.user)
-        car = self.sample_car(driver)
-
+        order = self.sample_order(self.default_user)
         ride = Ride.objects.create(
             order=order,
-            driver=driver,
-            car=car,
+            driver=self.default_driver,
+            car=self.default_car,
         )
 
         res = self.client.get(reverse("taxi:ride-finished", args=[ride.id]))
@@ -426,50 +265,14 @@ class DriverRideAPITest(TestBase):
 class AdminRideAPITest(TestBase):
     def setUp(self):
         super().setUp()
-        self.client.force_authenticate(user=self.admin)
-        self.city = City.objects.create(name="test city")
-
-    def sample_order(self, user: AUTH_USER_MODEL):
-        return Order.objects.create(
-            user=user,
-            city=self.city,
-            street_from="test street_from",
-            street_to="test street_to",
-            distance=51,
-        )
-
-    def sample_driver(self, user: AUTH_USER_MODEL):
-        return Driver.objects.create(
-            user=user,
-            license_number="123456",
-            age=18,
-            city=self.city,
-            sex="M",
-        )
-
-    def sample_car(self, driver):
-        return Car.objects.create(
-            model="test model",
-            number="test number",
-            driver=driver,
-        )
+        self.client.force_authenticate(user=self.default_admin)
 
     def test_admin_can_list_all_rides(self):
-        order = self.sample_order(self.user)
-        user2 = get_user_model().objects.create_user(
-            email="test2@test.com",
-            first_name="test",
-            last_name="test",
-            password="test1234",
-            is_driver=True,
-        )
-        driver = self.sample_driver(user2)
-        car = self.sample_car(driver)
-
+        order = self.sample_order(self.default_user)
         ride = Ride.objects.create(
             order=order,
-            driver=driver,
-            car=car,
+            driver=self.default_driver,
+            car=self.default_car,
         )
 
         serializer = RideListSerializer(ride)
@@ -479,35 +282,20 @@ class AdminRideAPITest(TestBase):
         self.assertIn(serializer.data, res.data)
 
     def test_filter_by_driver(self):
-        order1 = self.sample_order(self.user)
-        order2 = self.sample_order(self.user)
+        order1 = self.sample_order(self.default_user)
+        order2 = self.sample_order(self.default_user)
 
-        driver_user1 = get_user_model().objects.create_user(
-            email="driver1@test.com",
-            first_name="test",
-            last_name="test",
-            password="test1234",
+        driver_user2 = self.sample_user(
+            "another_driver_user@example.com",
             is_driver=True,
         )
-
-        driver_user2 = get_user_model().objects.create_user(
-            email="driver2@test.com",
-            first_name="test",
-            last_name="test",
-            password="test1234",
-            is_driver=True,
-        )
-
-        driver1 = self.sample_driver(driver_user1)
         driver2 = self.sample_driver(driver_user2)
-
-        car1 = self.sample_car(driver1)
         car2 = self.sample_car(driver2)
 
         ride1 = Ride.objects.create(
             order=order1,
-            driver=driver1,
-            car=car1,
+            driver=self.default_driver,
+            car=self.default_car,
         )
 
         ride2 = Ride.objects.create(
@@ -519,84 +307,50 @@ class AdminRideAPITest(TestBase):
         serializer1 = RideListSerializer(ride1)
         serializer2 = RideListSerializer(ride2)
 
-        res = self.client.get(RIDE_URL, {"driver": driver1.id})
+        res = self.client.get(RIDE_URL, {"driver": self.default_driver.id})
 
         self.assertIn(serializer1.data, res.data)
         self.assertNotIn(serializer2.data, res.data)
 
     def test_filter_by_user(self):
-        order1 = self.sample_order(self.user)
-        user2 = get_user_model().objects.create_user(
-            email="test2@test.com",
-            first_name="test",
-            last_name="test",
-            password="test1234",
-            is_driver=True,
-        )
+        order1 = self.sample_order(self.default_user)
+        user2 = self.sample_user("another_user@example.com")
         order2 = self.sample_order(user2)
-
-        driver_user = get_user_model().objects.create_user(
-            email="driver1@test.com",
-            first_name="test",
-            last_name="test",
-            password="test1234",
-            is_driver=True,
-        )
-
-        driver = self.sample_driver(driver_user)
-
-        car = self.sample_car(driver)
-
         ride1 = Ride.objects.create(
             order=order1,
-            driver=driver,
-            car=car,
+            driver=self.default_driver,
+            car=self.default_car,
         )
 
         ride2 = Ride.objects.create(
             order=order2,
-            driver=driver,
-            car=car,
+            driver=self.default_driver,
+            car=self.default_car,
         )
 
         serializer1 = RideListSerializer(ride1)
         serializer2 = RideListSerializer(ride2)
 
-        res = self.client.get(RIDE_URL, {"user": self.user.id})
+        res = self.client.get(RIDE_URL, {"user": self.default_user.id})
 
         self.assertIn(serializer1.data, res.data)
         self.assertNotIn(serializer2.data, res.data)
 
     def test_filter_by_status(self):
-        order = self.sample_order(self.user)
-        order2 = self.sample_order(self.user)
-
-        driver_user = get_user_model().objects.create_user(
-            email="driver1@test.com",
-            first_name="test",
-            last_name="test",
-            password="test1234",
-            is_driver=True,
-        )
-
-        driver = self.sample_driver(driver_user)
-
-        car = self.sample_car(driver)
-
+        order = self.sample_order(self.default_user)
+        order2 = self.sample_order(self.default_user)
         ride1 = Ride.objects.create(
             order=order,
-            driver=driver,
-            car=car,
+            driver=self.default_driver,
+            car=self.default_car,
         )
 
         ride2 = Ride.objects.create(
             order=order2,
-            driver=driver,
-            car=car,
+            driver=self.default_driver,
+            car=self.default_car,
+            status="3",
         )
-
-        ride2.status = "3"
-        ride2.save()
 
         serializer1 = RideListSerializer(ride1)
         serializer2 = RideListSerializer(ride2)
@@ -607,22 +361,11 @@ class AdminRideAPITest(TestBase):
         self.assertNotIn(serializer1.data, res.data)
 
     def test_admin_can_delete_rides(self):
-        order = self.sample_order(self.user)
-        user2 = get_user_model().objects.create_user(
-            email="test2@test.com",
-            first_name="test",
-            last_name="test",
-            password="test1234",
-            is_driver=True,
-        )
-        driver = self.sample_driver(user2)
-
-        car = self.sample_car(driver)
-
+        order = self.sample_order(self.default_user)
         ride = Ride.objects.create(
             order=order,
-            driver=driver,
-            car=car,
+            driver=self.default_driver,
+            car=self.default_car,
         )
 
         res = self.client.delete(get_ride_detail(ride.id))
