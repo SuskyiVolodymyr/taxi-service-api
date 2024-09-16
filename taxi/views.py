@@ -1,12 +1,13 @@
 from datetime import datetime
 
 from django.db import transaction
-from django.db.models import Q, Avg
+from django.db.models import Q, Avg, QuerySet
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated, IsAdminUser, AllowAny
+from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet, GenericViewSet
-from rest_framework import mixins, status
+from rest_framework import mixins, status, serializers
 
 from payment.services.payment_helper import payment_helper
 from taxi.models import City, DriverApplication, Driver, Order, Ride, Car
@@ -52,7 +53,7 @@ class CarViewSet(ModelViewSet):
     permission_classes = [IsDriverOrAdminUser]
     filterset_class = CarFilters
 
-    def get_queryset(self):
+    def get_queryset(self) -> QuerySet:
         queryset = self.queryset.all()
         if not self.request.user.is_staff:
             queryset = queryset.filter(driver__user=self.request.user)
@@ -63,20 +64,20 @@ class DriverApplicationViewSet(ModelViewSet):
     queryset = DriverApplication.objects.select_related("user", "city")
     filterset_class = DriverApplicationFilters
 
-    def get_queryset(self):
+    def get_queryset(self) -> QuerySet:
         queryset = self.queryset.all()
         if not self.request.user.is_staff:
             queryset = queryset.filter(user=self.request.user)
         return queryset
 
-    def get_serializer_class(self):
+    def get_serializer_class(self) -> serializers.SerializerMetaclass:
         if self.action == "list":
             return DriverApplicationListSerializer
         if self.action == "retrieve":
             return DriverApplicationDetailSerializer
         return DriverApplicationSerializer
 
-    def get_permissions(self):
+    def get_permissions(self) -> list:
         if self.action in [
             "update",
             "partial_update",
@@ -91,7 +92,7 @@ class DriverApplicationViewSet(ModelViewSet):
         detail=True,
         methods=["get"],
     )
-    def apply(self, request, pk: int = None):
+    def apply(self, request: Request, pk: int = None) -> Response:
         """
         Apply driver application. Only admin have permissions to do that.
         """
@@ -124,7 +125,7 @@ class DriverApplicationViewSet(ModelViewSet):
         detail=True,
         methods=["get"],
     )
-    def reject(self, request, pk: int = None):
+    def reject(self, request: Request, pk: int = None) -> Response:
         """
         Reject driver application. Only admin have permissions to do that.
         """
@@ -141,7 +142,7 @@ class DriverApplicationViewSet(ModelViewSet):
             serializer = self.get_serializer_class()(application)
             return Response(serializer.data, status=status.HTTP_200_OK)
 
-    def create(self, request, *args, **kwargs):
+    def create(self, request: Request, *args, **kwargs) -> Response:
         """
         User can apply for a driver. Only admin can see all applications.
         User can't apply if it's already applied for a driver.
@@ -158,14 +159,14 @@ class DriverViewSet(
     queryset = Driver.objects.select_related("user", "city")
     filterset_class = DriverFilters
 
-    def get_serializer_class(self):
+    def get_serializer_class(self) -> serializers.SerializerMetaclass:
         if self.action == "list":
             return DriverListSerializer
         if self.action == "retrieve":
             return DriverDetailSerializer
         return DriverSerializer
 
-    def get_permissions(self):
+    def get_permissions(self) -> list:
         if self.action in ["update", "partial_update", "destroy", "fire"]:
             return [IsAdminUser()]
         return [AllowAny()]
@@ -174,7 +175,7 @@ class DriverViewSet(
         detail=True,
         methods=["get"],
     )
-    def fire(self, request, pk: int = None):
+    def fire(self, request: Request, pk: int = None) -> Response:
         """
         Fire driver. Only admin have permissions to do that.
         """
@@ -199,7 +200,7 @@ class OrderViewSet(
     )
     filterset_class = OrderFilters
 
-    def get_serializer_class(self):
+    def get_serializer_class(self) -> serializers.SerializerMetaclass:
         if self.action == "take_order":
             return TakeOrderSerializer
         if self.action == "list":
@@ -208,7 +209,7 @@ class OrderViewSet(
             return OrderDetailSerializer
         return OrderSerializer
 
-    def get_queryset(self):
+    def get_queryset(self) -> QuerySet:
         queryset = self.queryset.all()
         if not self.request.user.is_staff:
             if not self.request.user.is_driver:
@@ -220,14 +221,14 @@ class OrderViewSet(
                 )
         return queryset
 
-    def get_permissions(self):
+    def get_permissions(self) -> list:
         if self.action == "destroy":
             return [IsAdminUser()]
         if self.action == "take_order":
             return [IsDriverOrAdminUser()]
         return [IsAuthenticated()]
 
-    def create(self, request, *args, **kwargs):
+    def create(self, request: Request, *args, **kwargs) -> Response:
         """
         User can't create an order if he already has an active order.
         User can't create and order if he has pending payment.
@@ -244,7 +245,7 @@ class OrderViewSet(
         detail=True,
         methods=["post"],
     )
-    def take_order(self, request, pk: int = None):
+    def take_order(self, request: Request, pk: int = None) -> Response:
         """
         Take an active order. Only driver have permissions to do that.
         Driver can take only one order at a time.
@@ -283,7 +284,7 @@ class RideViewSet(
     queryset = Ride.objects.all()
     filterset_class = RideFilters
 
-    def get_queryset(self):
+    def get_queryset(self) -> QuerySet:
         queryset = self.queryset.select_related(
             "order__user",
             "order__city",
@@ -301,14 +302,14 @@ class RideViewSet(
             )
         return queryset
 
-    def get_serializer_class(self):
+    def get_serializer_class(self) -> serializers.SerializerMetaclass:
         if self.action == "retrieve":
             return RideDetailSerializer
         if self.action == "rate_ride":
             return RideRateSerializer
         return RideListSerializer
 
-    def get_permissions(self):
+    def get_permissions(self) -> list:
         if self.action == "destroy":
             return [IsAdminUser()]
         if self.action in ["in_process", "finished"]:
@@ -320,7 +321,7 @@ class RideViewSet(
         methods=["get"],
         permission_classes=[IsDriverOrAdminUser],
     )
-    def in_process(self, request, pk: int = None):
+    def in_process(self, request: Request, pk: int = None) -> Response:
         """
         Update ride status to in process.
         """
@@ -336,7 +337,7 @@ class RideViewSet(
         methods=["get"],
         permission_classes=[IsDriverOrAdminUser],
     )
-    def finished(self, request, pk: int = None):
+    def finished(self, request: Request, pk: int = None) -> Response:
         """
         Update ride status to finished.
         """
@@ -354,7 +355,7 @@ class RideViewSet(
         methods=["post"],
         permission_classes=[IsAuthenticated],
     )
-    def rate_ride(self, request, pk: int = None):
+    def rate_ride(self, request: Request, pk: int = None) -> Response:
         """
         Only user who ordered can rate the ride.
         Rate must be between 1 and 5.

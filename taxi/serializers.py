@@ -34,7 +34,7 @@ class DriverApplicationSerializer(serializers.ModelSerializer):
             "reviewed_at",
         )
 
-    def validate(self, attrs):
+    def validate(self, attrs: dict) -> dict:
         if attrs["age"] < 18:
             raise serializers.ValidationError(
                 "Driver must be at least 18 years old"
@@ -50,11 +50,14 @@ class DriverApplicationSerializer(serializers.ModelSerializer):
             )
         return attrs
 
-    def create(self, validated_data):
+    def create(self, validated_data: dict) -> DriverApplication:
         driver_application = DriverApplication.objects.create(
             user=self.context["request"].user, **validated_data
         )
-        telegram_message = f"User {self.context['request'].user.full_name} applied for a driver"
+        telegram_message = (
+            f"User {self.context['request'].user.full_name} "
+            f"applied for a driver"
+        )
         send_message(telegram_message)
         return driver_application
 
@@ -131,7 +134,7 @@ class CarSerializer(serializers.ModelSerializer):
         fields = ("id", "model", "number", "driver")
         read_only_fields = ("id", "driver")
 
-    def create(self, validated_data):
+    def create(self, validated_data: dict) -> Car:
         driver = Driver.objects.get(user=self.context["request"].user)
         car = Car.objects.create(driver=driver, **validated_data)
         return car
@@ -152,7 +155,7 @@ class OrderSerializer(serializers.ModelSerializer):
         )
         read_only_fields = ("id", "user", "date_created", "is_active")
 
-    def validate(self, attrs):
+    def validate(self, attrs: dict) -> dict:
         if Order.objects.filter(
             user=self.context["request"].user, is_active=True
         ):
@@ -171,7 +174,7 @@ class OrderSerializer(serializers.ModelSerializer):
             )
         return attrs
 
-    def create(self, validated_data):
+    def create(self, validated_data: dict) -> Order:
         order = Order.objects.create(
             user=self.context["request"].user, **validated_data
         )
@@ -233,7 +236,7 @@ class TakeOrderSerializer(serializers.ModelSerializer):
         model = Ride
         fields = ("car",)
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         user = self.context["request"].user
         self.fields["car"].queryset = Car.objects.filter(driver__user=user)

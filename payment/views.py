@@ -25,7 +25,10 @@ class PaymentSuccessView(APIView):
             payment = Payment.objects.get(session_id=session_id)
             payment.status = "2"
             payment.save()
-            telegram_message = f"User {payment.order.user.full_name} successfully paid for order #{payment.order.id}."
+            telegram_message = (
+                f"User {payment.order.user.full_name} "
+                f"successfully paid for order #{payment.order.id}."
+            )
             send_message(telegram_message)
             return Response(
                 {"message": "Payment was successful."},
@@ -53,7 +56,10 @@ class PaymentCancelView(APIView):
             order.is_active = False
             order.save()
 
-            telegram_message = f"User {payment.order.user.full_name} cancelled payment for order #{payment.order.id}."
+            telegram_message = (
+                f"User {payment.order.user.full_name} "
+                f"cancelled payment for order #{payment.order.id}."
+            )
             send_message(telegram_message)
 
             return Response(

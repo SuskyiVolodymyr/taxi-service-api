@@ -10,7 +10,7 @@ class City(models.Model):
         verbose_name_plural = "cities"
         ordering = ["name"]
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.name
 
 
@@ -32,7 +32,7 @@ class Driver(models.Model):
     class Meta:
         ordering = ["user__first_name"]
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.user.full_name
 
 
@@ -46,7 +46,7 @@ class Car(models.Model):
     class Meta:
         ordering = ["model"]
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.driver}: {self.model}"
 
 
@@ -71,7 +71,7 @@ class DriverApplication(models.Model):
     class Meta:
         ordering = ["status", "created_at"]
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.user.full_name
 
 
@@ -92,7 +92,7 @@ class Order(models.Model):
     class Meta:
         ordering = ["-date_created"]
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.user}: {self.date_created}"
 
 
@@ -115,5 +115,5 @@ class Ride(models.Model):
     class Meta:
         ordering = ["status"]
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.driver}: {self.order}"
