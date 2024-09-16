@@ -18,7 +18,7 @@ def get_payment_detail(payment_id) -> str:
     return reverse("payment:payment-detail", args=[payment_id])
 
 
-class TestAllowedMethods(TestCase):
+class BaseTest(TestCase):
     def setUp(self):
         self.client = APIClient()
         self.admin = get_user_model().objects.create_superuser(
@@ -27,65 +27,6 @@ class TestAllowedMethods(TestCase):
             last_name="admin",
             password="admin1234",
         )
-        self.client.force_authenticate(self.admin)
-
-    def sample_order(self) -> Order:
-        return Order.objects.create(
-            user=self.admin,
-            city=City.objects.create(name="test city"),
-            street_from="test street_from",
-            street_to="test street_to",
-            distance=51,
-        )
-
-    @staticmethod
-    def sample_payment(order: Order) -> Payment:
-        return Payment.objects.create(
-            status="1",
-            session_url="https://google.com",
-            session_id="test",
-            money_to_pay=10.00,
-            order=order,
-        )
-
-    def test_list_method_allowed(self):
-        res = self.client.get(PAYMENT_URL)
-
-        self.assertEqual(res.status_code, status.HTTP_200_OK)
-
-    def test_retrieve_method_allowed(self):
-        order = self.sample_order()
-        payment = self.sample_payment(order)
-
-        res = self.client.get(get_payment_detail(payment.id))
-
-        self.assertEqual(res.status_code, status.HTTP_200_OK)
-
-    def test_create_method_not_allowed(self):
-        res = self.client.post(PAYMENT_URL)
-
-        self.assertEqual(res.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
-
-    def test_update_method_not_allowed(self):
-        order = self.sample_order()
-        payment = self.sample_payment(order)
-
-        res = self.client.put(get_payment_detail(payment.id))
-
-        self.assertEqual(res.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
-
-    def test_delete_method_not_allowed(self):
-        order = self.sample_order()
-        payment = self.sample_payment(order)
-
-        res = self.client.delete(get_payment_detail(payment.id))
-
-        self.assertEqual(res.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
-
-
-class UnauthorizedUserPaymentAPITest(TestCase):
-    def setUp(self):
-        self.client = APIClient()
         self.user = get_user_model().objects.create_user(
             email="test@test.com",
             first_name="test",
@@ -93,59 +34,8 @@ class UnauthorizedUserPaymentAPITest(TestCase):
             password="test1234",
         )
 
-    def sample_order(self) -> Order:
-        return Order.objects.create(
-            user=self.user,
-            city=City.objects.create(name="test city"),
-            street_from="test street_from",
-            street_to="test street_to",
-            distance=51,
-        )
-
     @staticmethod
-    def sample_payment(order: Order) -> Payment:
-        return Payment.objects.create(
-            status="1",
-            session_url="https://google.com",
-            session_id="test",
-            money_to_pay=10.00,
-            order=order,
-        )
-
-    def test_unauthorized_user_list_method_not_allowed(self):
-        res = self.client.get(PAYMENT_URL)
-
-        self.assertEqual(res.status_code, status.HTTP_401_UNAUTHORIZED)
-
-    def test_unauthorized_user_retrieve_method_not_allowed(self):
-        order = self.sample_order()
-        payment = self.sample_payment(order)
-
-        res = self.client.get(get_payment_detail(payment.id))
-
-        self.assertEqual(res.status_code, status.HTTP_401_UNAUTHORIZED)
-
-
-class SimpleUserPaymentAPITest(TestCase):
-    def setUp(self):
-        self.client = APIClient()
-        self.user = get_user_model().objects.create_user(
-            email="test@test.com",
-            first_name="test",
-            last_name="test",
-            password="test1234",
-        )
-        self.user2 = get_user_model().objects.create_user(
-            email="test2@test.com",
-            first_name="test2",
-            last_name="test2",
-            password="test1234",
-        )
-        self.client.force_authenticate(self.user)
-
-    def sample_order(self, user: AUTH_USER_MODEL = None) -> Order:
-        if user is None:
-            user = self.user
+    def sample_order(user: AUTH_USER_MODEL) -> Order:
         return Order.objects.create(
             user=user,
             city=City.objects.create(name="test city"),
@@ -164,14 +54,82 @@ class SimpleUserPaymentAPITest(TestCase):
             order=order,
         )
 
+
+class TestAllowedMethods(BaseTest):
+    def setUp(self):
+        super().setUp()
+        self.client.force_authenticate(self.admin)
+
+    def test_list_method_allowed(self):
+        res = self.client.get(PAYMENT_URL)
+
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+
+    def test_retrieve_method_allowed(self):
+        order = self.sample_order(self.user)
+        payment = self.sample_payment(order)
+
+        res = self.client.get(get_payment_detail(payment.id))
+
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+
+    def test_create_method_not_allowed(self):
+        res = self.client.post(PAYMENT_URL)
+
+        self.assertEqual(res.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+
+    def test_update_method_not_allowed(self):
+        order = self.sample_order(self.user)
+        payment = self.sample_payment(order)
+
+        res = self.client.put(get_payment_detail(payment.id))
+
+        self.assertEqual(res.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+
+    def test_delete_method_not_allowed(self):
+        order = self.sample_order(self.user)
+        payment = self.sample_payment(order)
+
+        res = self.client.delete(get_payment_detail(payment.id))
+
+        self.assertEqual(res.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+
+
+class UnauthorizedUserPaymentAPITest(BaseTest):
+
+    def test_unauthorized_user_list_method_not_allowed(self):
+        res = self.client.get(PAYMENT_URL)
+
+        self.assertEqual(res.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_unauthorized_user_retrieve_method_not_allowed(self):
+        order = self.sample_order(self.user)
+        payment = self.sample_payment(order)
+
+        res = self.client.get(get_payment_detail(payment.id))
+
+        self.assertEqual(res.status_code, status.HTTP_401_UNAUTHORIZED)
+
+
+class SimpleUserPaymentAPITest(BaseTest):
+    def setUp(self):
+        super().setUp()
+        self.client.force_authenticate(self.user)
+
     def test_simple_user_list_method_allowed(self):
         res = self.client.get(PAYMENT_URL)
 
         self.assertEqual(res.status_code, status.HTTP_200_OK)
 
     def test_simple_user_can_list_only_his_payments(self):
-        order1 = self.sample_order()
-        order2 = self.sample_order(self.user2)
+        order1 = self.sample_order(self.user)
+        another_user = get_user_model().objects.create_user(
+            email="test2@test.com",
+            first_name="test2",
+            last_name="test2",
+            password="test1234",
+        )
+        order2 = self.sample_order(another_user)
         payment1 = self.sample_payment(order1)
         payment2 = self.sample_payment(order2)
 
@@ -185,7 +143,7 @@ class SimpleUserPaymentAPITest(TestCase):
 
     @patch("payment.views.send_message")
     def test_success_payment(self, mock_send_message):
-        order = self.sample_order()
+        order = self.sample_order(self.user)
         payment = self.sample_payment(order)
 
         res = self.client.get(
@@ -203,7 +161,7 @@ class SimpleUserPaymentAPITest(TestCase):
 
     @patch("payment.views.send_message")
     def test_canceled_payment(self, mock_send_message):
-        order = self.sample_order()
+        order = self.sample_order(self.user)
         payment = self.sample_payment(order)
 
         res = self.client.get(
@@ -223,48 +181,13 @@ class SimpleUserPaymentAPITest(TestCase):
         mock_send_message.assert_called_once()
 
 
-class AdminPaymentAPITest(TestCase):
+class AdminPaymentAPITest(BaseTest):
     def setUp(self):
-        self.client = APIClient()
-        self.admin = get_user_model().objects.create_user(
-            email="admin@admin.com",
-            first_name="test",
-            last_name="test",
-            password="test1234",
-            is_staff=True,
-        )
+        super().setUp()
         self.client.force_authenticate(self.admin)
 
-        self.user = get_user_model().objects.create_user(
-            email="test@test.com",
-            first_name="test",
-            last_name="test",
-            password="test1234",
-        )
-
-    def sample_order(self, user: AUTH_USER_MODEL = None) -> Order:
-        if user is None:
-            user = self.user
-        return Order.objects.create(
-            user=user,
-            city=City.objects.create(name="test city"),
-            street_from="test street_from",
-            street_to="test street_to",
-            distance=51,
-        )
-
-    @staticmethod
-    def sample_payment(order: Order) -> Payment:
-        return Payment.objects.create(
-            status="1",
-            session_url="https://google.com",
-            session_id="test",
-            money_to_pay=10.00,
-            order=order,
-        )
-
     def test_admin_can_list_all_payments(self):
-        order = self.sample_order()
+        order = self.sample_order(self.user)
         payment = self.sample_payment(order)
 
         serializer = PaymentListSerializer(payment)
@@ -274,7 +197,7 @@ class AdminPaymentAPITest(TestCase):
         self.assertIn(serializer.data, res.data)
 
     def test_filter_by_status(self):
-        order1 = self.sample_order()
+        order1 = self.sample_order(self.user)
         user2 = get_user_model().objects.create_user(
             email="test2@test.com",
             first_name="test2",
@@ -298,7 +221,7 @@ class AdminPaymentAPITest(TestCase):
         self.assertNotIn(serializer1.data, res.data)
 
     def test_filter_by_user(self):
-        order1 = self.sample_order()
+        order1 = self.sample_order(self.user)
         user2 = get_user_model().objects.create_user(
             email="test2@test.com",
             first_name="test2",
