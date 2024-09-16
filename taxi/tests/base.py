@@ -3,7 +3,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from rest_framework.test import APIClient
 
-from taxi.models import Driver, Car, City, DriverApplication
+from taxi.models import Driver, Car, City, DriverApplication, Order
 
 
 class TestBase(TestCase):
@@ -78,3 +78,13 @@ class TestBase(TestCase):
         return DriverApplication.objects.create(
             **payload,
         )
+
+    def sample_order(self, user: AUTH_USER_MODEL, **params) -> Order:
+        payload = {
+            "user": user,
+            "city": self.default_city,
+            "street_from": "test street_from",
+            "street_to": "test street_to",
+            "distance": 51,
+        }
+        return Order.objects.create(**payload)

@@ -19,15 +19,6 @@ def get_order_detail(order_id) -> str:
 
 
 class UnauthorizedOrderAPITest(TestBase):
-    def sample_order(self):
-        return Order.objects.create(
-            user=self.user,
-            city=City.objects.create(name="test city"),
-            street_from="test street_from",
-            street_to="test street_to",
-            distance=51,
-        )
-
     def test_unauthorized_user_cant_list_orders(self):
         res = self.client.get(ORDER_URL)
 
@@ -45,7 +36,7 @@ class UnauthorizedOrderAPITest(TestBase):
         self.assertEqual(res.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_unauthorized_user_cant_delete_orders(self):
-        order = self.sample_order()
+        order = self.sample_order(self.default_user)
 
         res = self.client.delete(get_order_detail(order.id))
 
@@ -55,29 +46,12 @@ class UnauthorizedOrderAPITest(TestBase):
 class SimpleUserOrderAPITest(TestBase):
     def setUp(self):
         super().setUp()
-        self.client.force_authenticate(user=self.user)
-        self.city = City.objects.create(name="test city")
+        self.client.force_authenticate(user=self.default_user)
 
-    def sample_order(self, user: AUTH_USER_MODEL = None):
-        if user is None:
-            user = self.user
-        return Order.objects.create(
-            user=user,
-            city=self.city,
-            street_from="test street_from",
-            street_to="test street_to",
-            distance=51,
-        )
-
-    def test_simple_user_cant_list_only_his_orders(self):
-        order1 = self.sample_order()
-        user2 = get_user_model().objects.create_user(
-            email="test2@test.com",
-            first_name="test",
-            last_name="test",
-            password="test1234",
-        )
-        order2 = self.sample_order(user2)
+    def test_simple_user_can_list_only_his_orders(self):
+        another_user = self.sample_user("test2@test.com")
+        order1 = self.sample_order(self.default_user)
+        order2 = self.sample_order(another_user)
         serializer1 = OrderListSerializer(order1)
         serializer2 = OrderListSerializer(order2)
         res = self.client.get(ORDER_URL)
@@ -95,7 +69,7 @@ class SimpleUserOrderAPITest(TestBase):
             status=status.HTTP_201_CREATED
         )
         payload = {
-            "city": self.city.id,
+            "city": self.default_city.id,
             "street_from": "test street_from",
             "street_to": "test street_to",
             "distance": 51,
@@ -115,7 +89,7 @@ class SimpleUserOrderAPITest(TestBase):
             status=status.HTTP_201_CREATED
         )
         payload = {
-            "city": self.city.id,
+            "city": self.default_city.id,
             "street_from": "test street_from",
             "street_to": "test street_to",
             "distance": 49,
@@ -123,10 +97,13 @@ class SimpleUserOrderAPITest(TestBase):
         res = self.client.post(ORDER_URL, payload)
         self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
 
+        mock_payment_helper.assert_not_called()
+        mock_send_message.assert_not_called()
+
     def test_simple_user_can_have_only_one_active_order(self):
-        self.sample_order()
+        self.sample_order(self.default_user)
         payload = {
-            "city": self.city.id,
+            "city": self.default_city.id,
             "street_from": "test street_from",
             "street_to": "test street_to",
             "distance": 51,
@@ -137,7 +114,7 @@ class SimpleUserOrderAPITest(TestBase):
         self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_simple_user_cant_delete_orders(self):
-        order = self.sample_order()
+        order = self.sample_order(self.default_user)
 
         res = self.client.delete(get_order_detail(order.id))
 
@@ -147,29 +124,11 @@ class SimpleUserOrderAPITest(TestBase):
 class DriverOrderAPITest(TestBase):
     def setUp(self):
         super().setUp()
-        self.user.is_driver = True
-        self.user.save()
-        self.client.force_authenticate(user=self.user)
-        self.user2 = get_user_model().objects.create_user(
-            email="test2@test.com",
-            first_name="test",
-            last_name="test",
-            password="test1234",
-        )
-        self.city = City.objects.create(name="test city")
-
-    def sample_order(self):
-        return Order.objects.create(
-            user=self.user2,
-            city=self.city,
-            street_from="test street_from",
-            street_to="test street_to",
-            distance=51,
-        )
+        self.client.force_authenticate(user=self.default_driver_user)
 
     @patch("taxi.views.send_message")
     def test_driver_can_take_order(self, mock_send_message):
-        order = self.sample_order()
+        order = self.sample_order(self.default_user)
         Payment.objects.create(
             status="2",
             order=order,
@@ -177,22 +136,9 @@ class DriverOrderAPITest(TestBase):
             money_to_pay=50,
         )
 
-        driver = Driver.objects.create(
-            user=self.user,
-            license_number="123456",
-            age=18,
-            city=self.city,
-            sex="M",
-        )
-
-        car = Car.objects.create(
-            model="test model",
-            number="test number",
-            driver=driver,
-        )
-
         res = self.client.post(
-            reverse("taxi:order-take-order", args=[order.id]), {"car": car.id}
+            reverse("taxi:order-take-order", args=[order.id]),
+            {"car": self.default_car.id},
         )
 
         self.assertEqual(res.status_code, status.HTTP_201_CREATED)
@@ -202,25 +148,13 @@ class DriverOrderAPITest(TestBase):
         mock_send_message.assert_called_once()
 
     def test_driver_cant_take_order_if_has_active_ride(self):
-        order1 = self.sample_order()
-        driver = Driver.objects.create(
-            user=self.user,
-            license_number="123456",
-            age=18,
-            city=self.city,
-            sex="M",
-        )
-        car = Car.objects.create(
-            model="test model",
-            number="test number",
-            driver=driver,
-        )
+        order1 = self.sample_order(self.default_user)
         Ride.objects.create(
             order=order1,
-            driver=driver,
-            car=car,
+            driver=self.default_driver,
+            car=self.default_car,
         )
-        order2 = self.sample_order()
+        order2 = self.sample_order(self.default_user)
         Payment.objects.create(
             status="2",
             order=order2,
@@ -229,13 +163,14 @@ class DriverOrderAPITest(TestBase):
         )
 
         res = self.client.post(
-            reverse("taxi:order-take-order", args=[order2.id]), {"car": car.id}
+            reverse("taxi:order-take-order", args=[order2.id]),
+            {"car": self.default_car.id},
         )
 
         self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_driver_cant_delete_orders(self):
-        order = self.sample_order()
+        order = self.sample_order(self.default_user)
 
         res = self.client.delete(get_order_detail(order.id))
 
@@ -245,22 +180,10 @@ class DriverOrderAPITest(TestBase):
 class AdminOrderAPITest(TestBase):
     def setUp(self):
         super().setUp()
-        self.client.force_authenticate(user=self.admin)
-        self.city = City.objects.create(name="test city")
-
-    def sample_order(self, user: AUTH_USER_MODEL = None) -> Order:
-        if user is None:
-            user = self.user
-        return Order.objects.create(
-            user=user,
-            city=self.city,
-            street_from="test street_from",
-            street_to="test street_to",
-            distance=51,
-        )
+        self.client.force_authenticate(user=self.default_admin)
 
     def test_admin_can_list_all_orders(self):
-        order = self.sample_order()
+        order = self.sample_order(self.default_user)
 
         res = self.client.get(ORDER_URL)
 
@@ -269,14 +192,14 @@ class AdminOrderAPITest(TestBase):
         self.assertIn(serializer.data, res.data)
 
     def test_filter_by_payment_status(self):
-        order1 = self.sample_order()
+        order1 = self.sample_order(self.default_user)
         Payment.objects.create(
             status="2",
             order=order1,
             session_id="123",
             money_to_pay=50,
         )
-        order2 = self.sample_order()
+        order2 = self.sample_order(self.default_user)
         Payment.objects.create(
             status="1",
             order=order2,
@@ -293,26 +216,20 @@ class AdminOrderAPITest(TestBase):
         self.assertNotIn(serializer2.data, res.data)
 
     def test_filter_by_user(self):
-        order1 = self.sample_order()
-        user2 = get_user_model().objects.create_user(
-            email="test2@test.com",
-            first_name="test",
-            last_name="test",
-            password="test1234",
-        )
-        order2 = self.sample_order(user=user2)
+        order1 = self.sample_order(self.default_user)
+        order2 = self.sample_order(self.default_driver_user)
 
         serializer1 = OrderListSerializer(order1)
         serializer2 = OrderListSerializer(order2)
 
-        res = self.client.get(ORDER_URL, {"user": user2.id})
+        res = self.client.get(ORDER_URL, {"user": self.default_driver_user.id})
 
         self.assertNotIn(serializer1.data, res.data)
         self.assertIn(serializer2.data, res.data)
 
     def test_filter_by_is_active(self):
-        order1 = self.sample_order()
-        order2 = self.sample_order()
+        order1 = self.sample_order(self.default_user)
+        order2 = self.sample_order(self.default_user)
         order2.is_active = False
         order2.save()
 
@@ -325,10 +242,10 @@ class AdminOrderAPITest(TestBase):
         self.assertNotIn(serializer2.data, res.data)
 
     def test_update_orders_method_not_allowed(self):
-        order = self.sample_order()
+        order = self.sample_order(self.default_user)
 
         payload = {
-            "city": self.city.id,
+            "city": self.default_city.id,
             "street_from": "test street_from updated",
             "street_to": "test street_to",
             "distance": 51,
@@ -339,7 +256,7 @@ class AdminOrderAPITest(TestBase):
         self.assertEqual(res.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
 
     def test_admin_can_delete_orders(self):
-        order = self.sample_order()
+        order = self.sample_order(self.default_user)
 
         res = self.client.delete(get_order_detail(order.id))
 
